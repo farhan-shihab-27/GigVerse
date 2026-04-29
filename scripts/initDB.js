@@ -4,20 +4,15 @@ const path = require('path');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// ca.pem lives alongside package.json in the project root
-const caPath = path.join(process.cwd(), 'ca.pem');
-
 (async () => {
+  /* Connect WITHOUT selecting a database first so the CREATE DATABASE
+     statement inside schema.sql can execute. */
   const connection = await mysql.createConnection({
     host:     process.env.DB_HOST     || 'localhost',
     port:     Number(process.env.DB_PORT) || 3306,
     user:     process.env.DB_USER     || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME     || 'defaultdb',
-    multipleStatements: true,
-    ssl: {
-      ca: fs.readFileSync(caPath),
-    },
+    multipleStatements: true,          // allow full script execution
   });
 
   const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
@@ -25,7 +20,7 @@ const caPath = path.join(process.cwd(), 'ca.pem');
 
   console.log('⏳  Running schema.sql …');
   await connection.query(sql);
-  console.log('✅  Database schema initialised successfully.');
+  console.log('✅  Database "gigverse" initialised successfully.');
 
   await connection.end();
   process.exit(0);

@@ -9,8 +9,7 @@ const userRoutes    = require('./routes/user.routes');
 const searchRoutes  = require('./routes/search.routes');
 const orderRoutes   = require('./routes/order.routes');
 const reviewRoutes  = require('./routes/review.routes');
-const gigRoutes       = require('./routes/gig.routes');
-const dashboardRoutes = require('./routes/dashboard.routes');
+const gigRoutes     = require('./routes/gig.routes');
 
 const app = express();
 
