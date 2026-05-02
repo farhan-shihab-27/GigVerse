@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-gray-900 font-sans antialiased;
+  }
+}
+
+@layer components {
+
+  /* ── Primary button: orange fill ──────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2;
+  }
+
+  /* ── Secondary button: orange outline ─────────────────── */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-brand-500 text-brand-600 hover:bg-brand-50 font-semibold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2;
+  }
+
+  /* ── Form input ───────────────────────────────────────── */
+  .input-field {
+    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none hover:border-gray-300;
+  }
+
+  /* ── Card surface ─────────────────────────────────────── */
+  .card {
+    @apply bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-500 to-brand-700 bg-clip-text text-transparent;
+  }
+
+  .bg-brand-gradient {
+    @apply bg-gradient-to-br from-brand-500 to-brand-700;
+  }
+}
