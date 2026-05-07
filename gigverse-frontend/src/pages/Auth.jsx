@@ -1,7 +1,7 @@
 // src/pages/Auth.jsx — Login & Sign Up (English UI, API-Wired)
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Zap, Mail, Lock, Eye, EyeOff, User, ArrowRight, CheckCircle2, Calendar, AlertCircle } from 'lucide-react';
+import { Zap, Mail, Lock, Eye, EyeOff, User, ArrowRight, CheckCircle2, Calendar, AlertCircle, Phone } from 'lucide-react';
 import { authAPI } from '../lib/api';
 
 const DEPARTMENTS = [
@@ -26,7 +26,7 @@ export default function Auth() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [signupForm, setSignupForm] = useState({ name: '', uiuEmail: '', personalEmail: '', password: '', roleId: '1', deptId: '1', dob: '' });
+  const [signupForm, setSignupForm] = useState({ name: '', uiuEmail: '', personalEmail: '', whatsAppNumber: '', password: '', roleId: '1', deptId: '1', dob: '' });
 
   useEffect(() => { setError(''); setSuccessMsg(''); }, [mode]);
   useEffect(() => { if (localStorage.getItem('gv_token')) navigate('/home', { replace: true }); }, [navigate]);
@@ -46,13 +46,13 @@ export default function Auth() {
 
   const handleSignUp = async (e) => {
     e.preventDefault(); setError(''); setSuccessMsg('');
-    const { name, uiuEmail, personalEmail, password, roleId, deptId, dob } = signupForm;
-    if (!name || !uiuEmail || !personalEmail || !password) { setError('Please fill in all required fields.'); return; }
+    const { name, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob } = signupForm;
+    if (!name || !uiuEmail || !personalEmail || !whatsAppNumber || !password) { setError('Please fill in all required fields.'); return; }
     if (!uiuEmail.endsWith('uiu.ac.bd')) { setError('Please use your UIU email (e.g., @bss.uiu.ac.bd).'); return; }
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     setIsLoading(true);
     try {
-      await authAPI.register({ name, uiuEmail, personalEmail, password, roleId: Number(roleId), deptId: Number(deptId), dob: dob || undefined });
+      await authAPI.register({ name, uiuEmail, personalEmail, whatsAppNumber, password, roleId: Number(roleId), deptId: Number(deptId), dob: dob || undefined });
       setSuccessMsg('Account created successfully! Please log in.'); setTimeout(() => setMode('login'), 1500);
     } catch (err) { setError(err.response?.data?.message || 'Registration failed. Please try again.'); }
     finally { setIsLoading(false); }
@@ -105,6 +105,7 @@ export default function Auth() {
               <div className="space-y-1"><label htmlFor="signup-name" className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Full Name</label><div className="relative"><User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input id="signup-name" type="text" placeholder="Your full name" value={signupForm.name} onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })} className="input-field pl-10" required /></div></div>
               <div className="space-y-1"><label htmlFor="signup-uiu-email" className="text-xs font-semibold text-gray-600 uppercase tracking-wide">UIU Email <span className="text-brand-500 normal-case font-normal">(Official)</span></label><div className="relative"><Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input id="signup-uiu-email" type="email" placeholder="yourname@bss.uiu.ac.bd" value={signupForm.uiuEmail} onChange={(e) => setSignupForm({ ...signupForm, uiuEmail: e.target.value })} className="input-field pl-10" required /></div></div>
               <div className="space-y-1"><label htmlFor="signup-personal-email" className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Personal Email</label><div className="relative"><Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input id="signup-personal-email" type="email" placeholder="you@gmail.com" value={signupForm.personalEmail} onChange={(e) => setSignupForm({ ...signupForm, personalEmail: e.target.value })} className="input-field pl-10" required /></div></div>
+              <div className="space-y-1"><label htmlFor="signup-whatsapp" className="text-xs font-semibold text-gray-600 uppercase tracking-wide">WhatsApp Number</label><div className="relative"><Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input id="signup-whatsapp" type="tel" placeholder="+8801..." value={signupForm.whatsAppNumber} onChange={(e) => setSignupForm({ ...signupForm, whatsAppNumber: e.target.value })} className="input-field pl-10" required /></div></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><label htmlFor="signup-role" className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Role</label><select id="signup-role" value={signupForm.roleId} onChange={(e) => setSignupForm({ ...signupForm, roleId: e.target.value })} className="input-field">{ROLES.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></div>
                 <div className="space-y-1"><label htmlFor="signup-dept" className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Department</label><select id="signup-dept" value={signupForm.deptId} onChange={(e) => setSignupForm({ ...signupForm, deptId: e.target.value })} className="input-field">{DEPARTMENTS.map((d) => <option key={d.id} value={d.id}>{d.code}</option>)}</select></div>

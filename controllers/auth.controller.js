@@ -14,7 +14,7 @@ const VALID_EMAIL_DOMAINS = ['@bss.uiu.ac.bd', '@e.uiu.ac.bd'];
  */
 exports.register = async (req, res, next) => {
   try {
-    const { name, uiuEmail, personalEmail, password, roleId, deptId, dob } = req.body;
+    const { name, uiuEmail, personalEmail, password, roleId, deptId, dob, whatsAppNumber } = req.body;
 
     // ── Validate required fields ──────────────────────────────
     if (!name || !uiuEmail || !personalEmail || !password || !roleId || !deptId) {
@@ -26,11 +26,10 @@ exports.register = async (req, res, next) => {
 
     // ── Validate UIU email domain ─────────────────────────────
     const emailLower = uiuEmail.toLowerCase().trim();
-    const domainValid = VALID_EMAIL_DOMAINS.some((d) => emailLower.endsWith(d));
-    if (!domainValid) {
-      return res.status(400).json({
+    if (!emailLower.endsWith('.uiu.ac.bd')) {
+      return res.status(403).json({
         success: false,
-        message: `UIU email must end with ${VALID_EMAIL_DOMAINS.join(' or ')}.`,
+        message: 'Access Denied: Only official UIU emails (.uiu.ac.bd) are allowed.',
       });
     }
 
@@ -56,7 +55,7 @@ exports.register = async (req, res, next) => {
     );
 
     // ── Create empty private info row ─────────────────────────
-    await pool.query('INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails) VALUES (?, NULL, NULL, NULL)', [result.insertId]);
+    await pool.query('INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails) VALUES (?, ?, NULL, NULL)', [result.insertId, whatsAppNumber || null]);
     await pool.query('UPDATE Users SET Bio = ? WHERE UserID = ?', ['New member of GigVerse', result.insertId]);
 
     return res.status(201).json({
