@@ -43,7 +43,7 @@ export default function Profile() {
   const joinDate = new Date(profile.CreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white bg-dora-kata py-8 px-4">
       <div className="max-w-4xl mx-auto animate-fade-in">
         {error && (<div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2 animate-slide-up"><AlertCircle size={16} className="shrink-0" /> {error}</div>)}
         {successMsg && (<div className="mb-4 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2 animate-slide-up"><CheckCircle2 size={16} className="shrink-0" /> {successMsg}</div>)}

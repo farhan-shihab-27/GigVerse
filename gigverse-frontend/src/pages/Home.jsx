@@ -1,6 +1,6 @@
 // src/pages/Home.jsx — Gig Discovery Homepage (English UI, API-Wired)
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Zap, Code2, Palette, PenLine, Megaphone, GraduationCap,
   Camera, BarChart3, Music, TrendingUp, Star, Users, ShieldCheck,
@@ -42,12 +42,17 @@ export default function Home() {
     finally { setLoading(false); }
   };
 
-  const handleHeroSearch = (e) => { e.preventDefault(); if (!searchQuery.trim()) return; };
+  const navigate = useNavigate();
+  const handleHeroSearch = (e) => { 
+    e.preventDefault(); 
+    if (!searchQuery.trim()) return; 
+    navigate(`/search?skill=${encodeURIComponent(searchQuery)}`);
+  };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white bg-dora-kata">
       {/* HERO */}
-      <section className="relative bg-gradient-to-br from-brand-50 via-white to-orange-50 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-brand-50 via-white to-orange-50 bg-dora-kata overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/4 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-orange-100 rounded-full blur-3xl opacity-30 translate-y-1/2 -translate-x-1/4 pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
@@ -127,7 +132,7 @@ export default function Home() {
                 gigs.map((gig) => {
                   const initials = gig.ContributorName?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
                   return (
-                    <Link to={`/gigs/${gig.GigID}`} key={gig.GigID} id={`gig-card-${gig.GigID}`} className="card p-5 hover:-translate-y-1 hover:shadow-brand hover:border-brand-100 cursor-pointer transition-all duration-200 group block">
+                    <Link to={`/profile/${gig.ContributorID}`} key={gig.GigID} id={`gig-card-${gig.GigID}`} className="card p-5 hover:-translate-y-1 hover:shadow-brand hover:border-brand-100 cursor-pointer transition-all duration-200 group block">
                       {gig.PrimaryImage && (<div className="w-full h-36 rounded-xl overflow-hidden mb-3 bg-gray-100"><img src={gig.PrimaryImage} alt={gig.Title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /></div>)}
                       <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-brand-50 text-brand-600 px-2.5 py-0.5 rounded-full mb-3">{gig.DeptName || 'Campus'}</span>
                       <h3 className="font-semibold text-gray-900 text-sm leading-snug mb-3 line-clamp-2">{gig.Title}</h3>

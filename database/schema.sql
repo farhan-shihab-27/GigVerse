@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS Users (
   RoleID        INT            NOT NULL,
   DeptID        INT            NOT NULL,
   Name          VARCHAR(120)   NOT NULL,
+  UiuId         VARCHAR(20)    NULL UNIQUE,
   UiuEmail      VARCHAR(150)   NOT NULL UNIQUE,
   PersonalEmail VARCHAR(150)   NOT NULL UNIQUE,
   PasswordHash  VARCHAR(255)   NOT NULL,
@@ -286,11 +287,24 @@ INSERT INTO Roles (RoleName) VALUES
   ('Student'), ('Alumni'), ('Faculty');
 
 INSERT INTO Departments (DeptName, DeptCode) VALUES
-  ('Computer Science and Engineering', 'CSE'),
-  ('Electrical and Electronic Engineering', 'EEE'),
-  ('Business Administration', 'BBA'),
-  ('Economics', 'ECO'),
-  ('Civil Engineering', 'CE');
+  ('B.Sc. in CSE', '011'),
+  ('B.Sc. in EEE', '021'),
+  ('B.Sc. in CE (Civil)', '031'),
+  ('B.Sc. in Data Science', '015'),
+  ('BBA', '111'),
+  ('BBA in AIS', '114'),
+  ('B.Sc. in Economics', '121'),
+  ('BSS in EDS', '211'),
+  ('BSS in MSJ', '221'),
+  ('BA in English', '231'),
+  ('B. Pharmacy', '311'),
+  ('B.Sc. in BSBGE', '321'),
+  ('M.Sc. in CSE (MSCSE)', '012'),
+  ('MBA', '112'),
+  ('Executive MBA', '113'),
+  ('Master in IHRM', '115'),
+  ('MS in Economics', '124'),
+  ('Master in Dev. Studies (MDS)', '125');
 
 INSERT INTO Categories (CategoryName) VALUES
   ('Design'), ('Development'), ('Writing'), ('Marketing'), ('Tutoring');

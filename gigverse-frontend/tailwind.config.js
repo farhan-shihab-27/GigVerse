@@ -9,16 +9,16 @@ export default {
       colors: {
         // UIU Brand — Orange & White palette
         brand: {
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316', // primary orange
-          600: '#ea580c', // darker orange
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
+          50: '#fff4eb',
+          100: '#ffe6d1',
+          200: '#ffc8a1',
+          300: '#ffaa70',
+          400: '#ff863b',
+          500: '#f26522', // Pure UIU Orange
+          600: '#d95315',
+          700: '#b0420f',
+          800: '#8c360e',
+          900: '#732e0e',
         },
       },
       fontFamily: {

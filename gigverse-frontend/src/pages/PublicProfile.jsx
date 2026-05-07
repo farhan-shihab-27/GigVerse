@@ -41,7 +41,7 @@ export default function PublicProfile() {
   const initials = user.Name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
   
   return (
-    <main className="min-h-screen bg-gray-50 py-8 px-4">
+    <main className="min-h-screen bg-gray-50 bg-dora-kata py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <Link to="/home" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors"><ArrowLeft size={16} /> Back to Dashboard</Link>
         

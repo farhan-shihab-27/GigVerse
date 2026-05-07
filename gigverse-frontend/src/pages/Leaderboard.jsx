@@ -26,7 +26,7 @@ export default function Leaderboard() {
   if (loading) return (<div className="min-h-[70vh] flex items-center justify-center"><div className="flex flex-col items-center gap-3 animate-pulse-soft"><Loader2 size={36} className="text-brand-500 animate-spin" /><p className="text-gray-400 text-sm">Loading leaderboard…</p></div></div>);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white bg-dora-kata py-8 px-4">
       <div className="max-w-4xl mx-auto animate-fade-in">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-brand-100 text-brand-700 text-xs font-semibold px-4 py-1.5 rounded-full mb-4"><TrendingUp size={13} /> Top Contributors</div>
