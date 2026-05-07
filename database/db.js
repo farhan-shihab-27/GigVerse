@@ -12,7 +12,7 @@ const pool = mysql.createPool({
   port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'defaultdb',
+  database: process.env.DB_NAME || process.env.DB_DATABASE || 'defaultdb',
 
   // ── Connection Pool Tuning ──────────────────────────────
   waitForConnections: true,

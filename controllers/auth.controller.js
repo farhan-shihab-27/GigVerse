@@ -56,7 +56,8 @@ exports.register = async (req, res, next) => {
     );
 
     // ── Create empty private info row ─────────────────────────
-    await pool.query('INSERT INTO User_Private_Info (UserID) VALUES (?)', [result.insertId]);
+    await pool.query('INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails) VALUES (?, NULL, NULL, NULL)', [result.insertId]);
+    await pool.query('UPDATE Users SET Bio = ? WHERE UserID = ?', ['New member of GigVerse', result.insertId]);
 
     return res.status(201).json({
       success: true,

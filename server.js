@@ -4,12 +4,13 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 
-const authRoutes    = require('./routes/auth.routes');
-const userRoutes    = require('./routes/user.routes');
-const searchRoutes  = require('./routes/search.routes');
-const orderRoutes   = require('./routes/order.routes');
-const reviewRoutes  = require('./routes/review.routes');
-const gigRoutes     = require('./routes/gig.routes');
+const authRoutes      = require('./routes/auth.routes');
+const userRoutes      = require('./routes/user.routes');
+const searchRoutes    = require('./routes/search.routes');
+const orderRoutes     = require('./routes/order.routes');
+const reviewRoutes    = require('./routes/review.routes');
+const gigRoutes       = require('./routes/gig.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
 

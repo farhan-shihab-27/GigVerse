@@ -1,59 +1,32 @@
-// src/App.jsx
+// src/App.jsx — GigVerse Router Configuration
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
+import Profile from './pages/Profile';
+import Leaderboard from './pages/Leaderboard';
+import GigDetails from './pages/GigDetails';
+import OrderDashboard from './pages/OrderDashboard';
+import UserList from './pages/UserList';
+import PublicProfile from './pages/PublicProfile';
 
-// ── Route guard placeholder ──────────────────────────────────
-// TODO (Phase 3): Replace with real auth check (JWT in localStorage / AuthContext)
-const isAuthenticated = () => {
-  return Boolean(localStorage.getItem('gv_token'));
-};
-
-// ── Protected Route wrapper (ready for Phase 3) ─────────────
-function PrivateRoute({ children }) {
-  return isAuthenticated() ? children : <Navigate to="/auth" replace />;
-}
+const isAuthenticated = () => Boolean(localStorage.getItem('gv_token'));
+function PrivateRoute({ children }) { return isAuthenticated() ? children : <Navigate to="/auth" replace />; }
 
 export default function App() {
   return (
     <BrowserRouter>
-      {/*
-        Layout: Navbar is visible on all pages EXCEPT the Auth page.
-        The Auth page uses its own full-screen centered layout.
-      */}
       <Routes>
-        {/* ── Public routes with Navbar ───────────────────── */}
-        <Route
-          path="/"
-          element={
-            <>
-              <Navbar />
-              <Home />
-            </>
-          }
-        />
-
-        {/* ── Auth page (no Navbar — full-screen layout) ──── */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/auth" element={<Auth />} />
-
-        {/* ── Future protected routes (Phase 3) ──────────── */}
-        {/*
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Navbar />
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/gigs/:id" element={<><Navbar /><GigDetail /></>} />
-        <Route path="/orders"   element={<PrivateRoute><Navbar /><Orders /></PrivateRoute>} />
-        */}
-
-        {/* ── 404 fallback ────────────────────────────────── */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/home" element={<><Navbar /><Home /></>} />
+        <Route path="/leaderboard" element={<><Navbar /><Leaderboard /></>} />
+        <Route path="/search" element={<><Navbar /><UserList /></>} />
+        <Route path="/gigs/:id" element={<><Navbar /><GigDetails /></>} />
+        <Route path="/profile/:id" element={<><Navbar /><PublicProfile /></>} />
+        <Route path="/profile" element={<PrivateRoute><Navbar /><Profile /></PrivateRoute>} />
+        <Route path="/orders" element={<PrivateRoute><Navbar /><OrderDashboard /></PrivateRoute>} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -4,6 +4,10 @@
 -- Runs against the connected database (Aiven defaultdb).
 -- ============================================================
 
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS Bookmarks, Experiences, Disputes, Notifications, Messages, Reviews, Payments, Orders, Gig_Images, Gigs, User_Skills, User_Private_Info, Users, Skills, Categories, Departments, Roles;
+
 -- ── Lookup / Dimension Tables ───────────────────────────────
 
 CREATE TABLE IF NOT EXISTS Roles (
@@ -228,6 +232,22 @@ CREATE TABLE IF NOT EXISTS Bookmarks (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- ── Experiences ────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS Experiences (
+  ExperienceID INT          AUTO_INCREMENT PRIMARY KEY,
+  UserID       INT          NOT NULL,
+  Title        VARCHAR(200) NOT NULL,
+  Company      VARCHAR(200) NOT NULL,
+  StartDate    DATE         NOT NULL,
+  EndDate      DATE         NULL,
+  Description  TEXT         NULL,
+  CreatedAt    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_experiences_user
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- ════════════════════════════════════════════════════════════
 -- Performance Indexes
 -- ════════════════════════════════════════════════════════════
@@ -286,3 +306,6 @@ INSERT INTO Skills (CategoryID, SkillName) VALUES
   (4, 'Social Media Marketing'),
   (5, 'Math Tutoring'),
   (5, 'Programming Tutoring');
+
+SET FOREIGN_KEY_CHECKS = 1;
+

@@ -18,8 +18,11 @@ exports.createGig = async (req, res, next) => {
 exports.getGig = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
-      `SELECT g.*, u.Name AS ContributorName, u.UiuEmail, u.AverageRating, u.PVP_Points
-       FROM Gigs g JOIN Users u ON g.ContributorID = u.UserID WHERE g.GigID = ?`,
+      `SELECT g.*, u.Name AS ContributorName, u.UiuEmail, u.PersonalEmail, u.AverageRating, u.PVP_Points, p.WhatsAppNumber
+       FROM Gigs g 
+       JOIN Users u ON g.ContributorID = u.UserID 
+       LEFT JOIN User_Private_Info p ON u.UserID = p.UserID
+       WHERE g.GigID = ?`,
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Gig not found.' });
@@ -34,13 +37,31 @@ exports.getGigsByContributor = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-exports.getAllGigs = async (_req, res, next) => {
+exports.getAllGigs = async (req, res, next) => {
   try {
+    const limit  = Math.min(Number(req.query.limit) || 20, 50);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+
     const [rows] = await pool.query(
-      `SELECT g.*, u.Name AS ContributorName, u.PVP_Points
-       FROM Gigs g JOIN Users u ON g.ContributorID = u.UserID
-       ORDER BY u.PVP_Points DESC`
+      `SELECT g.GigID, g.Title, g.Description, g.BasePrice, g.CreatedAt,
+              u.UserID  AS ContributorID,
+              u.Name    AS ContributorName,
+              u.ProfilePicUrl,
+              u.PVP_Points,
+              u.AverageRating,
+              r.RoleName,
+              d.DeptName,
+              gi.ImageUrl AS PrimaryImage
+       FROM Gigs g
+       JOIN Users       u  ON g.ContributorID = u.UserID
+       JOIN Roles       r  ON u.RoleID        = r.RoleID
+       JOIN Departments d  ON u.DeptID        = d.DeptID
+       LEFT JOIN Gig_Images gi ON gi.GigID = g.GigID AND gi.IsPrimary = TRUE
+       ORDER BY g.CreatedAt DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
+
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 };
