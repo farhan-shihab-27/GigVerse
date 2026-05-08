@@ -1,9 +1,30 @@
 {
   "version": 2,
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/server.js"
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "gigverse-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/gigverse-frontend/dist/assets/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/gigverse-frontend/dist/index.html"
     }
   ]
 }
