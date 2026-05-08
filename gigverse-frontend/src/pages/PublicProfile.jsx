@@ -54,9 +54,14 @@ export default function PublicProfile() {
             </div>
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">{user.Name}</h1>
+              <div className="mb-3">
+                <span className="inline-block px-3 py-1 bg-brand-50 text-brand-600 font-bold text-sm rounded-full border border-brand-100 shadow-sm">
+                  {Number(user.RoleID) === 1 ? 'Current Student' : Number(user.RoleID) === 2 ? 'Alumni' : Number(user.RoleID) === 3 ? 'Faculty' : 'Member'}
+                </span>
+              </div>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-4">
-                <span className="inline-flex items-center gap-1.5 bg-brand-50 text-brand-700 px-3 py-1 rounded-full text-sm font-bold shadow-sm"><Zap size={14} className="fill-brand-500" />{user.PVP_Points} PVP</span>
-                {user.AverageRating > 0 && <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-bold shadow-sm"><Star size={14} className="fill-amber-400" />{Number(user.AverageRating).toFixed(1)}</span>}
+                <span className="inline-flex items-center gap-1.5 bg-gray-50 text-gray-700 px-3 py-1 rounded-full text-sm font-bold shadow-sm border border-gray-200"><Zap size={14} className="fill-brand-500 text-brand-500" />{user.PVP_Points} PVP</span>
+                {user.AverageRating > 0 && <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-bold shadow-sm border border-amber-200"><Star size={14} className="fill-amber-400" />{Number(user.AverageRating).toFixed(1)}</span>}
               </div>
               <p className="text-gray-600 leading-relaxed max-w-2xl mx-auto md:mx-0">{user.Bio || "This contributor hasn't written a bio yet."}</p>
             </div>

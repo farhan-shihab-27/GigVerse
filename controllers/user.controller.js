@@ -397,7 +397,7 @@ exports.getPublicProfile = async (req, res, next) => {
 
     // 1. Core Profile & Contact Info
     const [users] = await pool.query(
-      `SELECT u.UserID, u.Name, u.Bio, u.PVP_Points, u.ProfilePicUrl, u.AverageRating, u.CreatedAt, u.PersonalEmail,
+      `SELECT u.UserID, u.RoleID, u.Name, u.Bio, u.PVP_Points, u.ProfilePicUrl, u.AverageRating, u.CreatedAt, u.PersonalEmail,
               p.WhatsAppNumber
        FROM Users u
        LEFT JOIN User_Private_Info p ON u.UserID = p.UserID
