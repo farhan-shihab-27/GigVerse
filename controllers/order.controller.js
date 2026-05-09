@@ -1,10 +1,8 @@
 // ── Order / Micro-Escrow Controller ─────────────────────────
 const pool = require('../database/db');
 
-/**
- * POST /api/orders
- * Body: { clientId, gigId }
- */
+// create new order
+
 exports.createOrder = async (req, res, next) => {
   try {
     const { clientId, gigId } = req.body;
@@ -30,9 +28,8 @@ exports.createOrder = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-/**
- * GET /api/orders/:id
- */
+// Orders
+
 exports.getOrder = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -45,9 +42,8 @@ exports.getOrder = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-/**
- * PATCH /api/orders/:id/status
- */
+// update status of an order
+
 exports.updateOrderStatus = async (req, res, next) => {
   try {
     const { orderStatus, paymentStatus } = req.body;
@@ -61,9 +57,8 @@ exports.updateOrderStatus = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-/**
- * GET /api/orders/user/:userId
- */
+// get all orders for a specific user
+
 exports.getOrdersByUser = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -75,9 +70,8 @@ exports.getOrdersByUser = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-/**
- * GET /api/orders/my  (JWT-protected: uses req.user.userId)
- */
+// fetch orders for the logged-in user
+
 exports.getMyOrders = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -95,9 +89,8 @@ exports.getMyOrders = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-/**
- * GET /api/orders/contact/:userId  (JWT-protected: fetch contributor contact info)
- */
+// get contact details of the contributor
+
 exports.getContributorContact = async (req, res, next) => {
   try {
     const { userId } = req.params;

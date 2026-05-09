@@ -1,14 +1,14 @@
-const router       = require('express').Router();
+const router = require('express').Router();
 const authenticate = require('../middlewares/auth.middleware');
-const ctrl         = require('../controllers/user.controller');
+const ctrl = require('../controllers/user.controller');
 
-// ── Protected profile routes (JWT required) ─────────────────
-router.get('/profile',         authenticate, ctrl.getMyProfile);
-router.put('/profile',         authenticate, ctrl.updateMyProfile);
+// Protected profile routes (JWT required)
+router.get('/profile', authenticate, ctrl.getMyProfile);
+router.put('/profile', authenticate, ctrl.updateMyProfile);
 router.get('/profile/private', authenticate, ctrl.getMyPrivateInfo);
 router.put('/profile/private', authenticate, ctrl.updateMyPrivateInfo);
 
-// Leaderboard (must come before /:id to avoid route collision)
+// Leaderboard
 router.get('/leaderboard', ctrl.getLeaderboard);
 
 // Search by skill
@@ -18,8 +18,8 @@ router.get('/by-skill', ctrl.getUsersBySkill);
 router.get('/public/:id', ctrl.getPublicProfile);
 
 // Legacy Public profile
-router.get('/:id',  ctrl.getProfile);
-router.put('/:id',  ctrl.updateProfile);
+router.get('/:id', ctrl.getProfile);
+router.put('/:id', ctrl.updateProfile);
 
 // Skills management
 router.post('/:id/skills', ctrl.setSkills);

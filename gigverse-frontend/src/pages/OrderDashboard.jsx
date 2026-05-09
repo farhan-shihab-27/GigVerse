@@ -1,4 +1,4 @@
-// src/pages/OrderDashboard.jsx — Order Tracking + Contact Contributor (English UI)
+// src/pages/OrderDashboard.jsx — Order Tracking + Contact Contributor
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ClipboardList, Loader2, AlertCircle, Clock, CheckCircle2, Zap, MessageSquare, Phone, Mail, ExternalLink, Send } from 'lucide-react';

@@ -1,4 +1,4 @@
-// ── Gig Controller ──────────────────────────────────────────
+// Gig Controller 
 const pool = require('../database/db');
 
 exports.createGig = async (req, res, next) => {
@@ -39,7 +39,7 @@ exports.getGigsByContributor = async (req, res, next) => {
 
 exports.getAllGigs = async (req, res, next) => {
   try {
-    const limit  = Math.min(Number(req.query.limit) || 20, 50);
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
 
     const [rows] = await pool.query(

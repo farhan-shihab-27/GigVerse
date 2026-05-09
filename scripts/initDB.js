@@ -1,5 +1,5 @@
-// ── Run schema.sql against the configured MySQL instance ────
-const fs   = require('fs');
+// Run schema.sql against the configured MySQL instance 
+const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
@@ -8,11 +8,11 @@ require('dotenv').config();
   /* Connect WITHOUT selecting a database first so the CREATE DATABASE
      statement inside schema.sql can execute. */
   const connection = await mysql.createConnection({
-    host:     process.env.DB_HOST     || 'localhost',
-    port:     Number(process.env.DB_PORT) || 3306,
-    user:     process.env.DB_USER     || 'root',
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME     || process.env.DB_DATABASE || 'defaultdb',
+    database: process.env.DB_NAME || process.env.DB_DATABASE || 'defaultdb',
     multipleStatements: true,          // allow full script execution
   });
 

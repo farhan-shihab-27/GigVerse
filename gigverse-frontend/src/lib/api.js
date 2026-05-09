@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Response interceptor: auto-logout on 401 ────────────────
+// Response interceptor: auto-logout on 401
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -28,32 +28,32 @@ api.interceptors.response.use(
   }
 );
 
-// ── Auth ────────────────────────────────────────────────────
+// Auth
 export const authAPI = {
-  register:   (data) => api.post('/auth/register', data),
-  login:      (data) => api.post('/auth/login', data),
+  register: (data) => api.post('/auth/register', data),
+  login: (data) => api.post('/auth/login', data),
   requestOtp: (data) => api.post('/auth/request-otp', data),
-  verifyOtp:  (data) => api.post('/auth/verify-otp', data),
+  verifyOtp: (data) => api.post('/auth/verify-otp', data),
 };
 
-// ── User / Profile ──────────────────────────────────────────
+// User / Profile 
 export const userAPI = {
-  getMyProfile:     ()     => api.get('/users/profile'),
-  updateMyProfile:  (data) => api.put('/users/profile', data),
-  getLeaderboard:   (limit = 100) => api.get(`/users/leaderboard?limit=${limit}`),
+  getMyProfile: () => api.get('/users/profile'),
+  updateMyProfile: (data) => api.put('/users/profile', data),
+  getLeaderboard: (limit = 100) => api.get(`/users/leaderboard?limit=${limit}`),
 };
 
-// ── Gigs ────────────────────────────────────────────────────
+// Gigs 
 export const gigAPI = {
-  getAll:  (limit = 20, offset = 0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
+  getAll: (limit = 20, offset = 0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
   getById: (id) => api.get(`/gigs/${id}`),
 };
 
-// ── Orders ──────────────────────────────────────────────────
+// Orders 
 export const orderAPI = {
-  create:       (data)   => api.post('/orders', data),
-  getMyOrders:  ()       => api.get('/orders/my'),
-  getById:      (id)     => api.get(`/orders/${id}`),
+  create: (data) => api.post('/orders', data),
+  getMyOrders: () => api.get('/orders/my'),
+  getById: (id) => api.get(`/orders/${id}`),
   getContributorContact: (userId) => api.get(`/orders/contact/${userId}`),
 };
 

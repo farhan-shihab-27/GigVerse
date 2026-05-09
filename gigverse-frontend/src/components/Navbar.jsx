@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx — Auth-Aware Navigation (English UI)
+// src/components/Navbar.jsx — Auth-Aware Navigation
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Zap, Bell, Menu, X, LogIn, UserPlus, User, LogOut, Trophy, Home, ClipboardList } from 'lucide-react';

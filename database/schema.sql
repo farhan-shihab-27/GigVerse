@@ -1,14 +1,12 @@
--- ============================================================
--- GigVerse — Database Schema  (MySQL 8.x)
+-- GigVerse — Database Schema 
 -- Strict 3NF / BCNF — 16 Tables
--- Runs against the connected database (Aiven defaultdb).
--- ============================================================
+-- Runs against the connected database 
 
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS Bookmarks, Experiences, Disputes, Notifications, Messages, Reviews, Payments, Orders, Gig_Images, Gigs, User_Skills, User_Private_Info, Users, Skills, Categories, Departments, Roles;
 
--- ── Lookup / Dimension Tables ───────────────────────────────
+-- Lookup / Dimension Tables 
 
 CREATE TABLE IF NOT EXISTS Roles (
   RoleID   INT          AUTO_INCREMENT PRIMARY KEY,
@@ -35,7 +33,7 @@ CREATE TABLE IF NOT EXISTS Skills (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ── Core User Table ─────────────────────────────────────────
+--  Core User Table 
 
 CREATE TABLE IF NOT EXISTS Users (
   UserID        INT            AUTO_INCREMENT PRIMARY KEY,
@@ -60,7 +58,7 @@ CREATE TABLE IF NOT EXISTS Users (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ── Private / Sensitive User Info  (1‑to‑1) ────────────────
+-- Private / Sensitive User Info  (1‑to‑1) 
 
 CREATE TABLE IF NOT EXISTS User_Private_Info (
   UserID             INT          PRIMARY KEY,
@@ -72,7 +70,7 @@ CREATE TABLE IF NOT EXISTS User_Private_Info (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── User ↔ Skills  (M‑to‑M junction) ───────────────────────
+-- User ↔ Skills  (M‑to‑M junction) 
 
 CREATE TABLE IF NOT EXISTS User_Skills (
   UserID  INT NOT NULL,
@@ -86,7 +84,7 @@ CREATE TABLE IF NOT EXISTS User_Skills (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Gigs ────────────────────────────────────────────────────
+-- Gigs 
 
 CREATE TABLE IF NOT EXISTS Gigs (
   GigID         INT            AUTO_INCREMENT PRIMARY KEY,
@@ -100,7 +98,7 @@ CREATE TABLE IF NOT EXISTS Gigs (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Gig_Images  (Multi-image gallery per gig) ──────────────
+-- Gig_Images
 
 CREATE TABLE IF NOT EXISTS Gig_Images (
   ImageID   INT          AUTO_INCREMENT PRIMARY KEY,
@@ -112,7 +110,7 @@ CREATE TABLE IF NOT EXISTS Gig_Images (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Orders  (Micro‑Escrow) ─────────────────────────────────
+-- Orders  (Micro‑Escrow)
 
 CREATE TABLE IF NOT EXISTS Orders (
   OrderID       INT            AUTO_INCREMENT PRIMARY KEY,
@@ -134,7 +132,7 @@ CREATE TABLE IF NOT EXISTS Orders (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ── Payments  (Transaction ledger) ─────────────────────────
+-- Payments
 
 CREATE TABLE IF NOT EXISTS Payments (
   PaymentID     INT            AUTO_INCREMENT PRIMARY KEY,
@@ -150,7 +148,7 @@ CREATE TABLE IF NOT EXISTS Payments (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Reviews  (1 review per order) ───────────────────────────
+-- Reviews
 
 CREATE TABLE IF NOT EXISTS Reviews (
   ReviewID   INT       AUTO_INCREMENT PRIMARY KEY,
@@ -167,7 +165,7 @@ CREATE TABLE IF NOT EXISTS Reviews (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ── Messages  (Real-time chat history) ─────────────────────
+-- Messages  (Real-time chat history) 
 
 CREATE TABLE IF NOT EXISTS Messages (
   MessageID  INT       AUTO_INCREMENT PRIMARY KEY,
@@ -184,7 +182,7 @@ CREATE TABLE IF NOT EXISTS Messages (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Notifications  (System alerts) ─────────────────────────
+-- Notifications  (System alerts) 
 
 CREATE TABLE IF NOT EXISTS Notifications (
   NotificationID INT          AUTO_INCREMENT PRIMARY KEY,
@@ -198,7 +196,7 @@ CREATE TABLE IF NOT EXISTS Notifications (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Disputes  (Conflict resolution for escrow) ─────────────
+-- Disputes
 
 CREATE TABLE IF NOT EXISTS Disputes (
   DisputeID         INT          AUTO_INCREMENT PRIMARY KEY,
@@ -217,7 +215,7 @@ CREATE TABLE IF NOT EXISTS Disputes (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Bookmarks  (Users save favourite gigs) ─────────────────
+-- Bookmarks  (Users save favourite gigs) 
 
 CREATE TABLE IF NOT EXISTS Bookmarks (
   BookmarkID INT       AUTO_INCREMENT PRIMARY KEY,
@@ -233,7 +231,7 @@ CREATE TABLE IF NOT EXISTS Bookmarks (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ── Experiences ────────────────────────────────────────────
+-- Experiences 
 
 CREATE TABLE IF NOT EXISTS Experiences (
   ExperienceID INT          AUTO_INCREMENT PRIMARY KEY,
@@ -249,9 +247,7 @@ CREATE TABLE IF NOT EXISTS Experiences (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ════════════════════════════════════════════════════════════
 -- Performance Indexes
--- ════════════════════════════════════════════════════════════
 
 CREATE INDEX idx_users_role          ON Users (RoleID);
 CREATE INDEX idx_users_dept          ON Users (DeptID);
@@ -279,9 +275,7 @@ CREATE INDEX idx_disputes_status     ON Disputes (Status);
 CREATE INDEX idx_bookmarks_user      ON Bookmarks (UserID);
 CREATE INDEX idx_bookmarks_gig       ON Bookmarks (GigID);
 
--- ════════════════════════════════════════════════════════════
 -- Seed Data (Roles, Departments, Categories & Skills)
--- ════════════════════════════════════════════════════════════
 
 INSERT INTO Roles (RoleName) VALUES
   ('Student'), ('Alumni'), ('Faculty');

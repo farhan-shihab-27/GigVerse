@@ -1,4 +1,4 @@
-// ── MySQL Connection Pool (promise‑based, Aiven SSL) ────────
+//  MySQL Connection Pool 
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
@@ -14,27 +14,27 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || process.env.DB_DATABASE || 'defaultdb',
 
-  // ── Connection Pool Tuning ──────────────────────────────
+  // Connection Pool Tuning 
   waitForConnections: true,
   connectionLimit: 10,          // max simultaneous connections
   maxIdle: 5,           // max idle connections retained
   idleTimeout: 60000,       // close idle connections after 60s
-  queueLimit: 0,           // unlimited queue (fail-fast disabled)
+  queueLimit: 0,           // unlimited queue 
   enableKeepAlive: true,        // prevent Aiven timeout disconnects
   keepAliveInitialDelay: 10000,    // first keep-alive probe after 10s
 
-  // ── Aiven SSL (mandatory) ──────────────────────────────
+  // Aiven SSL
   ssl: {
     ca: fs.readFileSync(caPath),
     rejectUnauthorized: true,      // enforce certificate validation
   },
 
-  // ── Timezone & Character Set ───────────────────────────
+  // Timezone & Character Set 
   timezone: '+06:00',             // Bangladesh Standard Time
   charset: 'utf8mb4',            // full Unicode support
 });
 
-// ── Connection Verification (runs once on import) ─────────
+// Connection Verification
 (async () => {
   try {
     const conn = await pool.getConnection();

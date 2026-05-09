@@ -200,11 +200,11 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
 (async () => {
   try {
     const connection = await mysql.createConnection({
-      host:     process.env.DB_HOST     || 'localhost',
-      port:     Number(process.env.DB_PORT) || 3306,
-      user:     process.env.DB_USER     || 'root',
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT) || 3306,
+      user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME     || 'gigverse',
+      database: process.env.DB_NAME || 'gigverse',
       multipleStatements: true,
     });
 
@@ -218,39 +218,38 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
     await connection.query('SET FOREIGN_KEY_CHECKS = 1');
     console.log('All tables truncated.');
 
-    // ========================================================================
     // PHASE 1: Generate 150 Users (100 Students, 25 Alumni, 25 Faculty)
-    // ========================================================================
+
     console.log('Generating 150 users...');
     const users = [];
     const passwordHash = await bcrypt.hash('gigverse123', 10);
-    
+
     for (let i = 0; i < 150; i++) {
       const firstName = pick(FIRST_NAMES);
       const lastName = pick(LAST_NAMES);
       const name = `${firstName} ${lastName}`;
-      
+
       // Deterministic role assignment: 0-99 = Student, 100-124 = Alumni, 125-149 = Faculty
       let roleId = 1;
       if (i >= 100 && i < 125) roleId = 2;
       else if (i >= 125) roleId = 3;
 
       const dept = pick(DEPARTMENTS);
-      
+
       // Generate UIU ID for students and alumni
       const year = r(19, 25).toString();
       const trimester = r(1, 3).toString();
       const serial = r(1, 9999).toString().padStart(4, '0');
       const uiuId = roleId !== 3 ? `${dept.code}${year}${trimester}${serial}` : null;
-      
+
       // Unified email architecture:
-      // Students & Faculty: uiuEmail = real UIU email, personalEmail = placeholder
+      // Students & Faculty: uiuEmail = UIU email, personalEmail = placeholder
       // Alumni: personalEmail = real email, uiuEmail = placeholder
       let uiuEmail, personalEmail;
       const uniqueSuffix = `${i}_${Date.now() % 100000}`;
-      
+
       if (roleId === 1) {
-        uiuEmail = `${firstName.toLowerCase()}${r(100,999)}_${uniqueSuffix}@bss.uiu.ac.bd`;
+        uiuEmail = `${firstName.toLowerCase()}${r(100, 999)}_${uniqueSuffix}@bss.uiu.ac.bd`;
         personalEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${uniqueSuffix}@placeholder.gigverse`;
       } else if (roleId === 3) {
         uiuEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${uniqueSuffix}@uiu.ac.bd`;
@@ -260,14 +259,14 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
         personalEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${uniqueSuffix}@gmail.com`;
         uiuEmail = `alumni_${uniqueSuffix}@placeholder.gigverse`;
       }
-      
+
       const pvpPoints = r(200, 1500);
       const avgRating = (r(35, 50) / 10).toFixed(1);
-      
+
       // Assign category for this user (even distribution)
       const categoryIndex = i % GIG_CATEGORIES.length;
       const category = GIG_CATEGORIES[categoryIndex];
-      
+
       const profilePicUrl = pick(PREMIUM_AVATARS);
       const bio = pick(category.bios);
 
@@ -276,7 +275,7 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [roleId, dept.id, name, uiuId, uiuEmail, personalEmail, passwordHash, pvpPoints, profilePicUrl, bio, avgRating]
       );
-      
+
       const userId = res.insertId;
       users.push({ id: userId, roleId, deptId: dept.id, name, categoryIndex });
 
@@ -293,12 +292,12 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
       const expCompany = roleId === 3 ? 'United International University' : pick(EXPERIENCE_COMPANIES);
       await connection.query(
         'INSERT INTO Experiences (UserID, Title, Company, StartDate, Description) VALUES (?, ?, ?, ?, ?)',
-        [userId, expTitle, expCompany, `${r(2020,2024)}-0${r(1,9)}-01`, 'Delivered high quality results with strong attention to detail and professional conduct.']
+        [userId, expTitle, expCompany, `${r(2020, 2024)}-0${r(1, 9)}-01`, 'Delivered high quality results with strong attention to detail and professional conduct.']
       );
       if (r(1, 10) > 5) {
         await connection.query(
           'INSERT INTO Experiences (UserID, Title, Company, StartDate, Description) VALUES (?, ?, ?, ?, ?)',
-          [userId, pick(EXPERIENCE_TITLES_STUDENT), pick(EXPERIENCE_COMPANIES), `${r(2018,2022)}-0${r(1,9)}-01`, 'Collaborated with cross-functional teams to deliver impactful results.']
+          [userId, pick(EXPERIENCE_TITLES_STUDENT), pick(EXPERIENCE_COMPANIES), `${r(2018, 2022)}-0${r(1, 9)}-01`, 'Collaborated with cross-functional teams to deliver impactful results.']
         );
       }
 
@@ -315,15 +314,13 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
     }
     console.log('150 users generated (100 Student / 25 Alumni / 25 Faculty).');
 
-    // ========================================================================
     // PHASE 2: Generate 200 Gigs — evenly distributed across all 7 categories
-    // ========================================================================
     console.log('Generating gigs with even category distribution...');
     let gigCount = 0;
 
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      
+
       // Primary gig — matched to user's assigned category
       const category = GIG_CATEGORIES[user.categoryIndex];
       const title = pick(category.titles);
@@ -354,14 +351,14 @@ const pick = (arr) => arr[r(0, arr.length - 1)];
         'INSERT INTO Reviews (OrderID, ReviewerID, Rating, Comment) VALUES (?, ?, ?, ?)',
         [orderRes.insertId, client.id, r(4, 5), pick(REVIEW_COMMENTS)]
       );
-      
+
       // Secondary gig for ~33% of users (different category for search diversity)
       if (i % 3 === 0) {
         const nextCatIdx = (user.categoryIndex + r(1, 3)) % GIG_CATEGORIES.length;
         const nextCat = GIG_CATEGORIES[nextCatIdx];
         const title2 = pick(nextCat.titles) + ' for Startups';
         const price2 = r(20, 120) * 100;
-        
+
         const [gigRes2] = await connection.query(
           `INSERT INTO Gigs (ContributorID, Title, Description, BasePrice) VALUES (?, ?, ?, ?)`,
           [user.id, title2, `Premium ${nextCat.cat} service. Delivering enterprise-quality results with a fast turnaround. Let's collaborate!`, price2]

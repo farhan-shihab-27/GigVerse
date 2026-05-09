@@ -1,14 +1,14 @@
-const router       = require('express').Router();
+const router = require('express').Router();
 const authenticate = require('../middlewares/auth.middleware');
-const ctrl         = require('../controllers/order.controller');
+const ctrl = require('../controllers/order.controller');
 
-// ── JWT-protected routes (must be above /:id to avoid route conflict) ──
-router.get('/my',              authenticate, ctrl.getMyOrders);
+// JWT-protected routes
+router.get('/my', authenticate, ctrl.getMyOrders);
 router.get('/contact/:userId', authenticate, ctrl.getContributorContact);
 
-router.post('/',               authenticate, ctrl.createOrder);
-router.get('/:id',             ctrl.getOrder);
-router.patch('/:id/status',    authenticate, ctrl.updateOrderStatus);
-router.get('/user/:userId',    ctrl.getOrdersByUser);
+router.post('/', authenticate, ctrl.createOrder);
+router.get('/:id', ctrl.getOrder);
+router.patch('/:id/status', authenticate, ctrl.updateOrderStatus);
+router.get('/user/:userId', ctrl.getOrdersByUser);
 
 module.exports = router;

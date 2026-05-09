@@ -24,22 +24,22 @@
 
 @layer components {
 
-  /* ── Primary button: orange fill ──────────────────────── */
+  /*  Primary button: orange fill  */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2;
   }
 
-  /* ── Secondary button: orange outline ─────────────────── */
+  /*  Secondary button: orange outline  */
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 border-2 border-brand-500 text-brand-600 hover:bg-brand-50 font-semibold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2;
   }
 
-  /* ── Form input ───────────────────────────────────────── */
+  /* Form input  */
   .input-field {
     @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none hover:border-gray-300;
   }
 
-  /* ── Card surface ─────────────────────────────────────── */
+  /* Card surface */
   .card {
     @apply bg-white rounded-2xl border-t-4 border-t-brand-500 border-l border-r border-b border-gray-100 shadow-sm hover:shadow-md transition-all duration-200;
   }
@@ -47,13 +47,11 @@
 
 @layer utilities {
   .bg-dora-kata {
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(148, 163, 184, 0.05),
-      rgba(148, 163, 184, 0.05) 10px,
-      transparent 10px,
-      transparent 20px
-    );
+    background-image: repeating-linear-gradient(45deg,
+        rgba(148, 163, 184, 0.05),
+        rgba(148, 163, 184, 0.05) 10px,
+        transparent 10px,
+        transparent 20px);
   }
 
   .text-gradient {

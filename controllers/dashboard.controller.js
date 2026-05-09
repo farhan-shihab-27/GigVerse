@@ -1,31 +1,25 @@
-// ── Dashboard / Analytics Controller ────────────────────────
+// Dashboard / Analytics Controller 
 const pool = require('../database/db');
 
-/**
- * GET /api/dashboard/stats
- * Returns aggregate platform metrics:
- *   - Total Users
- *   - Total active Gigs
- *   - Top 3 Contributors by PVP_Points
- */
+// Dashboard Data: users, gigs, and top contributors
 exports.getStats = async (_req, res, next) => {
   try {
-    // ── Total Users ───────────────────────────────────────────
+    // Total Users 
     const [[{ totalUsers }]] = await pool.query(
       'SELECT COUNT(*) AS totalUsers FROM Users'
     );
 
-    // ── Total Gigs ────────────────────────────────────────────
+    // Total Gigs 
     const [[{ totalGigs }]] = await pool.query(
       'SELECT COUNT(*) AS totalGigs FROM Gigs'
     );
 
-    // ── Total Orders ──────────────────────────────────────────
+    //  Total Orders 
     const [[{ totalOrders }]] = await pool.query(
       'SELECT COUNT(*) AS totalOrders FROM Orders'
     );
 
-    // ── Top 3 Contributors (by PVP_Points DESC) ───────────────
+    // Top 3 Contributors (by PVP_Points DESC) 
     const [topContributors] = await pool.query(
       `SELECT u.UserID, u.Name, u.UiuEmail, u.ProfilePicUrl,
               u.PVP_Points, u.AverageRating,

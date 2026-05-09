@@ -1,4 +1,4 @@
-// src/pages/Leaderboard.jsx — PVP Leaderboard (English UI, API-Wired)
+// src/pages/Leaderboard.jsx — PVP Leaderboard
 import { useState, useEffect } from 'react';
 import { Trophy, Zap, Star, Medal, Crown, TrendingUp, Loader2, AlertCircle, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';

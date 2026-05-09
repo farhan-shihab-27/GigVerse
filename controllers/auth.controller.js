@@ -1,15 +1,15 @@
 // -- Auth Controller -------------------------------------------
 const bcrypt = require('bcrypt');
-const jwt    = require('jsonwebtoken');
-const pool   = require('../database/db');
+const jwt = require('jsonwebtoken');
+const pool = require('../database/db');
 const nodemailer = require('nodemailer');
 
 const SALT_ROUNDS = 12;
-const JWT_SECRET  = process.env.JWT_SECRET || 'change_me_to_a_long_random_string';
+const JWT_SECRET = process.env.JWT_SECRET || 'change_me_to_a_long_random_string';
 const JWT_EXPIRES = '7d';
 
 // Temporary OTP Store (In production, use Redis)
-const otpStore = new Map(); 
+const otpStore = new Map();
 
 // Dummy transporter for development
 const transporter = nodemailer.createTransport({
@@ -22,7 +22,7 @@ exports.requestOtp = async (req, res, next) => {
   try {
     const { name, uiuId, email, whatsAppNumber, password, roleId, deptId, dob } = req.body;
 
-    // --- Legacy field support: accept uiuEmail/personalEmail from old clients ---
+    //  Legacy field support: accept uiuEmail/personalEmail from old clients ---
     const resolvedEmail = email || req.body.uiuEmail || req.body.personalEmail;
 
     if (!name || !resolvedEmail || !whatsAppNumber || !password || !roleId) {
@@ -32,7 +32,6 @@ exports.requestOtp = async (req, res, next) => {
     const isStudentOrAlumni = roleId === 1 || roleId === 2;
     const isFaculty = roleId === 3;
 
-    // -- Email Constraints ---------------------------------------------------
     const emailLower = resolvedEmail.toLowerCase().trim();
     if (roleId === 1 || roleId === 3) {
       if (!emailLower.endsWith('.uiu.ac.bd')) {
@@ -40,7 +39,7 @@ exports.requestOtp = async (req, res, next) => {
       }
     }
 
-    // -- Check for duplicate emails ------------------------------------------
+    // Check for duplicate emails 
     const [existing] = await pool.query(
       'SELECT UserID FROM Users WHERE UiuEmail = ? OR PersonalEmail = ? OR (UiuId = ? AND UiuId IS NOT NULL)',
       [emailLower, emailLower, uiuId || null]
@@ -49,7 +48,7 @@ exports.requestOtp = async (req, res, next) => {
       return res.status(409).json({ success: false, message: 'An account with this email or UIU ID already exists.' });
     }
 
-    // -- The Master ID Validator (Students & Alumni) -------------------------
+    //  The Master ID Validator (Students & Alumni) 
     if (isStudentOrAlumni && uiuId) {
       if (uiuId.length !== 10) {
         return res.status(400).json({ success: false, message: 'UIU Student ID must be exactly 10 digits.' });
@@ -60,7 +59,7 @@ exports.requestOtp = async (req, res, next) => {
       if (deptRows.length === 0) {
         return res.status(400).json({ success: false, message: 'Invalid Department selected.' });
       }
-      
+
       const expectedPrefix = deptRows[0].DeptCode;
       const prefix = uiuId.substring(0, 3);
       const yearStr = uiuId.substring(3, 5);
@@ -90,7 +89,7 @@ exports.requestOtp = async (req, res, next) => {
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Determine which column(s) to use for storage
     // Students & Faculty: .uiu.ac.bd email goes to UiuEmail, PersonalEmail gets a placeholder
     // Alumni: any email goes to PersonalEmail, UiuEmail gets a placeholder

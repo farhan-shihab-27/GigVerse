@@ -39,12 +39,12 @@ export default function PublicProfile() {
   if (error || !user) return (<div className="min-h-[70vh] flex flex-col items-center justify-center"><AlertCircle size={48} className="text-red-400 mb-3" /><p className="text-gray-600">{error || 'Profile not found.'}</p><Link to="/home" className="btn-secondary mt-4">Back to Home</Link></div>);
 
   const initials = user.Name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
-  
+
   return (
     <main className="min-h-screen bg-gray-50 bg-dora-kata py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <Link to="/home" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors"><ArrowLeft size={16} /> Back to Dashboard</Link>
-        
+
         {/* HERO SECTION */}
         <div className="card p-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-50 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/4 pointer-events-none" />
@@ -103,7 +103,7 @@ export default function PublicProfile() {
           <div className="lg:col-span-1 space-y-6">
             <div className="card p-6">
               <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2"><CheckCircle2 size={20} className="text-brand-500" /> Work Record</h2>
-              
+
               <div className="mb-6">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Experiences</h3>
                 {(!user.Experiences || user.Experiences.length === 0) ? (

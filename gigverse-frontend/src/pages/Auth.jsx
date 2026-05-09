@@ -57,12 +57,12 @@ export default function Auth() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  
-  const [signupForm, setSignupForm] = useState({ 
+
+  const [signupForm, setSignupForm] = useState({
     firstName: '', lastName: '', uiuId: '', email: '', whatsAppNumber: '', countryCode: '+880',
-    password: '', roleId: '1', program: 'Undergraduate', deptId: '1', dob: '' 
+    password: '', roleId: '1', program: 'Undergraduate', deptId: '1', dob: ''
   });
-  
+
   const [otpStep, setOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
 
@@ -89,7 +89,7 @@ export default function Auth() {
   const handleSignUp = async (e) => {
     e.preventDefault(); setError(''); setSuccessMsg('');
     const { firstName, lastName, uiuId, email, whatsAppNumber, password, roleId, deptId, dob } = signupForm;
-    
+
     // Validation
     if (!firstName || !lastName || !email || !whatsAppNumber || !password) {
       setError('Please fill in all required fields.'); return;
@@ -106,16 +106,16 @@ export default function Auth() {
     }
 
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
-    
+
     setIsLoading(true);
     try {
       const payload = {
         name: `${firstName} ${lastName}`,
         email: email.trim(),
-        whatsAppNumber: `${signupForm.countryCode}${whatsAppNumber}`, 
-        password, 
-        roleId: Number(roleId), 
-        deptId: Number(deptId), 
+        whatsAppNumber: `${signupForm.countryCode}${whatsAppNumber}`,
+        password,
+        roleId: Number(roleId),
+        deptId: Number(deptId),
         dob: dob || undefined
       };
 
@@ -137,19 +137,19 @@ export default function Auth() {
   const handleVerifyOtp = async (e) => {
     e.preventDefault(); setError(''); setSuccessMsg('');
     if (!otpCode) { setError('Please enter the OTP.'); return; }
-    
+
     setIsLoading(true);
     try {
       const { firstName, lastName, uiuId, email, whatsAppNumber, password, roleId, deptId, dob } = signupForm;
-      const payload = { 
+      const payload = {
         otp: otpCode,
-        name: `${firstName} ${lastName}`, 
+        name: `${firstName} ${lastName}`,
         email: email.trim(),
-        whatsAppNumber, 
-        password, 
-        roleId: Number(roleId), 
-        deptId: Number(deptId), 
-        dob: dob || undefined 
+        whatsAppNumber,
+        password,
+        roleId: Number(roleId),
+        deptId: Number(deptId),
+        dob: dob || undefined
       };
       if (roleId === '1' || roleId === '2') {
         payload.uiuId = uiuId;
@@ -224,7 +224,7 @@ export default function Auth() {
           {mode === 'signup' && !otpStep && (
             <form onSubmit={handleSignUp} className="space-y-4 animate-slide-up" noValidate>
               <h2 className="text-xl font-bold text-gray-900">Join GigVerse</h2>
-              
+
               {/* Name */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">First Name</label><div className="relative"><User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" placeholder="First" value={signupForm.firstName} onChange={(e) => setSignupForm({ ...signupForm, firstName: e.target.value })} className="input-field pl-10" required /></div></div>
@@ -284,21 +284,21 @@ export default function Auth() {
               {(isStudent || isAlumni) && (
                 <div className="space-y-1"><label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">UIU Student ID</label><div className="relative"><input type="text" placeholder="xxxxxxxxxx" value={signupForm.uiuId} onChange={(e) => setSignupForm({ ...signupForm, uiuId: e.target.value })} className="input-field" required /></div></div>
               )}
-              
+
               {/* Single Unified Email Field */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{getEmailLabel()}</label>
                 <div className="relative"><Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="email" placeholder={getEmailPlaceholder()} value={signupForm.email} onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })} className="input-field pl-10" required /></div>
                 {(isStudent || isFaculty) && <p className="text-[10px] text-gray-400 mt-0.5">Must end with .uiu.ac.bd</p>}
               </div>
-              
+
               {/* WhatsApp Number — Global Country Code Selector */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">WhatsApp Number</label>
                 <div className="flex">
-                  <select 
-                    value={signupForm.countryCode || '+880'} 
-                    onChange={(e) => setSignupForm({ ...signupForm, countryCode: e.target.value })} 
+                  <select
+                    value={signupForm.countryCode || '+880'}
+                    onChange={(e) => setSignupForm({ ...signupForm, countryCode: e.target.value })}
                     className="input-field !w-[110px] !rounded-r-none !border-r-0 focus:!ring-0 bg-gray-50 text-sm"
                   >
                     <option value="+880">BD +880</option>
@@ -337,7 +337,7 @@ export default function Auth() {
 
               <div className="space-y-1"><label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Date of Birth <span className="text-gray-400 normal-case font-normal">(Optional)</span></label><div className="relative"><Calendar size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="date" value={signupForm.dob} onChange={(e) => setSignupForm({ ...signupForm, dob: e.target.value })} className="input-field pl-10" /></div></div>
               <div className="space-y-1"><label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Password</label><div className="relative"><Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type={showPassword ? 'text' : 'password'} placeholder="Min. 6 characters" value={signupForm.password} onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })} className="input-field pl-10 pr-10" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors">{showPassword ? <EyeOff size={15} /> : <Eye size={15} />}</button></div></div>
-              
+
               <p className="text-[11px] text-gray-400 leading-relaxed">By signing up, you agree to GigVerse&apos;s <span className="text-brand-600 cursor-pointer hover:underline">Terms of Service</span> and <span className="text-brand-600 cursor-pointer hover:underline">Privacy Policy</span>.</p>
               <button type="submit" disabled={isLoading} className="btn-primary w-full !py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
                 {isLoading ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</span> : <span className="flex items-center gap-2">Continue <ArrowRight size={15} /></span>}

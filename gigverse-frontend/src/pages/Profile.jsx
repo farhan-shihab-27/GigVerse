@@ -1,4 +1,4 @@
-// src/pages/Profile.jsx — User Profile Dashboard (English UI, API-Wired)
+// src/pages/Profile.jsx — User Profile Dashboard
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Phone, CreditCard, Award, Star, Edit3, Save, X, Zap, Calendar, FileText, Shield, CheckCircle2, AlertCircle, Loader2, ClipboardList } from 'lucide-react';

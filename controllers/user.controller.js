@@ -1,10 +1,8 @@
-// ── User / Profile Controller ───────────────────────────────
+//  User / Profile Controller 
 const pool = require('../database/db');
 
-/**
- * GET /api/users/:id
- * Public profile — includes UiuEmail for mailto: redirects.
- */
+// Fetch public profile data
+
 exports.getProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -43,10 +41,8 @@ exports.getProfile = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/users/:id
- * Update public profile fields (name, bio, profilePicUrl, dob).
- */
+// update user profile (name, bio, etc.)
+
 exports.updateProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -55,10 +51,10 @@ exports.updateProfile = async (req, res, next) => {
     const fields = [];
     const values = [];
 
-    if (name !== undefined)          { fields.push('Name = ?');          values.push(name); }
-    if (bio !== undefined)           { fields.push('Bio = ?');           values.push(bio); }
+    if (name !== undefined) { fields.push('Name = ?'); values.push(name); }
+    if (bio !== undefined) { fields.push('Bio = ?'); values.push(bio); }
     if (profilePicUrl !== undefined) { fields.push('ProfilePicUrl = ?'); values.push(profilePicUrl); }
-    if (dob !== undefined)           { fields.push('DOB = ?');           values.push(dob); }
+    if (dob !== undefined) { fields.push('DOB = ?'); values.push(dob); }
 
     if (fields.length === 0) {
       return res.status(400).json({ success: false, message: 'No fields to update.' });
@@ -73,11 +69,8 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/users/:id/skills
- * Body: { skillIds: [1, 3, 5] }
- * Replace all user skills (idempotent).
- */
+// update user skills
+
 exports.setSkills = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -114,12 +107,9 @@ exports.setSkills = async (req, res, next) => {
   }
 };
 
-// ── Private Info (Strictly Protected) ───────────────────────
+// Private Info (Strictly Protected) 
+// get sensitive payment info
 
-/**
- * GET /api/users/:id/private
- * Returns sensitive payment info. In production, gate this behind auth middleware.
- */
 exports.getPrivateInfo = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -139,10 +129,8 @@ exports.getPrivateInfo = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/users/:id/private
- * Body: { whatsAppNumber?, bkashNumber?, bankAccountDetails? }
- */
+// Update Payment details (Whatsapp, bKash)
+
 exports.updatePrivateInfo = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -151,8 +139,8 @@ exports.updatePrivateInfo = async (req, res, next) => {
     const fields = [];
     const values = [];
 
-    if (whatsAppNumber !== undefined)     { fields.push('WhatsAppNumber = ?');     values.push(whatsAppNumber); }
-    if (bkashNumber !== undefined)        { fields.push('BkashNumber = ?');        values.push(bkashNumber); }
+    if (whatsAppNumber !== undefined) { fields.push('WhatsAppNumber = ?'); values.push(whatsAppNumber); }
+    if (bkashNumber !== undefined) { fields.push('BkashNumber = ?'); values.push(bkashNumber); }
     if (bankAccountDetails !== undefined) { fields.push('BankAccountDetails = ?'); values.push(bankAccountDetails); }
 
     if (fields.length === 0) {
@@ -175,10 +163,8 @@ exports.updatePrivateInfo = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/users/leaderboard
- * Top contributors ranked by PVP_Points descending.
- */
+// get top contributors for leaderboard
+
 exports.getLeaderboard = async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 25, 100);
@@ -201,12 +187,8 @@ exports.getLeaderboard = async (req, res, next) => {
   }
 };
 
-// ── Protected "My Profile" endpoints (JWT-based userId) ─────
+// get full profile of the logged-in user
 
-/**
- * GET /api/users/profile
- * Returns the authenticated user's full profile (Users + User_Private_Info + Skills).
- */
 exports.getMyProfile = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -244,11 +226,8 @@ exports.getMyProfile = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/users/profile
- * Update the authenticated user's public + private info in one request.
- * Body: { name?, bio?, profilePicUrl?, dob?, whatsAppNumber?, bkashNumber?, bankAccountDetails? }
- */
+// update public and private info together
+
 exports.updateMyProfile = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -257,10 +236,10 @@ exports.updateMyProfile = async (req, res, next) => {
     // ── Update Users table fields ──────────────────────────
     const userFields = [];
     const userValues = [];
-    if (name !== undefined)          { userFields.push('Name = ?');          userValues.push(name); }
-    if (bio !== undefined)           { userFields.push('Bio = ?');           userValues.push(bio); }
+    if (name !== undefined) { userFields.push('Name = ?'); userValues.push(name); }
+    if (bio !== undefined) { userFields.push('Bio = ?'); userValues.push(bio); }
     if (profilePicUrl !== undefined) { userFields.push('ProfilePicUrl = ?'); userValues.push(profilePicUrl); }
-    if (dob !== undefined)           { userFields.push('DOB = ?');           userValues.push(dob); }
+    if (dob !== undefined) { userFields.push('DOB = ?'); userValues.push(dob); }
 
     if (userFields.length > 0) {
       userValues.push(userId);
@@ -270,8 +249,8 @@ exports.updateMyProfile = async (req, res, next) => {
     // ── Update User_Private_Info table fields ──────────────
     const privateFields = [];
     const privateValues = [];
-    if (whatsAppNumber !== undefined)     { privateFields.push('WhatsAppNumber = ?');     privateValues.push(whatsAppNumber); }
-    if (bkashNumber !== undefined)        { privateFields.push('BkashNumber = ?');        privateValues.push(bkashNumber); }
+    if (whatsAppNumber !== undefined) { privateFields.push('WhatsAppNumber = ?'); privateValues.push(whatsAppNumber); }
+    if (bkashNumber !== undefined) { privateFields.push('BkashNumber = ?'); privateValues.push(bkashNumber); }
     if (bankAccountDetails !== undefined) { privateFields.push('BankAccountDetails = ?'); privateValues.push(bankAccountDetails); }
 
     if (privateFields.length > 0) {
@@ -289,10 +268,8 @@ exports.updateMyProfile = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/users/profile/private
- * Returns only the private info for the authenticated user.
- */
+// get private info of the logged-in user
+
 exports.getMyPrivateInfo = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -308,10 +285,8 @@ exports.getMyPrivateInfo = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/users/profile/private
- * Update private info for the authenticated user.
- */
+// update private info of the logged-in user
+
 exports.updateMyPrivateInfo = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -319,8 +294,8 @@ exports.updateMyPrivateInfo = async (req, res, next) => {
 
     const fields = [];
     const values = [];
-    if (whatsAppNumber !== undefined)     { fields.push('WhatsAppNumber = ?');     values.push(whatsAppNumber); }
-    if (bkashNumber !== undefined)        { fields.push('BkashNumber = ?');        values.push(bkashNumber); }
+    if (whatsAppNumber !== undefined) { fields.push('WhatsAppNumber = ?'); values.push(whatsAppNumber); }
+    if (bkashNumber !== undefined) { fields.push('BkashNumber = ?'); values.push(bkashNumber); }
     if (bankAccountDetails !== undefined) { fields.push('BankAccountDetails = ?'); values.push(bankAccountDetails); }
 
     if (fields.length === 0) {
@@ -336,10 +311,8 @@ exports.updateMyPrivateInfo = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/users/by-skill
- * Search users matching CategoryName or SkillName
- */
+// search users by skill or category
+
 exports.getUsersBySkill = async (req, res, next) => {
   try {
     const skill = req.query.skill || '';
@@ -369,10 +342,10 @@ exports.getUsersBySkill = async (req, res, next) => {
          WHERE us.UserID IN (?)`,
         [userIds]
       );
-      
+
       const skillsMap = {};
       skills.forEach(s => {
-        if(!skillsMap[s.UserID]) skillsMap[s.UserID] = [];
+        if (!skillsMap[s.UserID]) skillsMap[s.UserID] = [];
         skillsMap[s.UserID].push(s.SkillName);
       });
 
@@ -387,10 +360,8 @@ exports.getUsersBySkill = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/users/public/:id
- * Fetch extensive public profile for Portfolio page
- */
+// get public profile for portfolio page
+
 exports.getPublicProfile = async (req, res, next) => {
   try {
     const { id } = req.params;

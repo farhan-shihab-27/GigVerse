@@ -1,4 +1,4 @@
-// src/pages/Home.jsx — Gig Discovery Homepage (English UI, API-Wired)
+// src/pages/Home.jsx — Gig Discovery Homepage
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -43,9 +43,9 @@ export default function Home() {
   };
 
   const navigate = useNavigate();
-  const handleHeroSearch = (e) => { 
-    e.preventDefault(); 
-    if (!searchQuery.trim()) return; 
+  const handleHeroSearch = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
     navigate(`/search?skill=${encodeURIComponent(searchQuery)}`);
   };
 
@@ -60,7 +60,7 @@ export default function Home() {
             <Zap size={12} className="fill-brand-500" /> UIU’s Campus Freelance Platform
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mb-5 animate-slide-up">
-            Collaborate With <span className="text-[#f26522] drop-shadow-md">UIU’s Exceptional Minds</span><br/>and Innovators
+            Collaborate With <span className="text-[#f26522] drop-shadow-md">UIU’s Exceptional Minds</span><br />and Innovators
           </h1>
           <p className="text-base text-gray-500 max-w-2xl mx-auto mb-10 animate-fade-in leading-relaxed">
             Seamlessly connect with credentialed professionals within the UIU community. Browse portfolios for software innovation, engineering & design, and business solutions to easily find and engage with top-tier campus talent.

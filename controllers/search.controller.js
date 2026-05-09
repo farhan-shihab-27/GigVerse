@@ -1,15 +1,8 @@
 // ── Smart Search Controller ─────────────────────────────────
 const pool = require('../database/db');
 
-/**
- * GET /api/search/contributors?skill=Logo+Design
- *
- * Fetches contributors by SkillName using JOINs across
- * Users → User_Skills → Skills.
- *
- * CRITICAL: Results are ranked by PVP_Points DESC so top
- * contributors always surface first.
- */
+/// Search contributors by skill (top pvp points first)
+
 exports.searchBySkill = async (req, res, next) => {
   try {
     const { skill } = req.query;
@@ -48,10 +41,8 @@ exports.searchBySkill = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/search/skills
- * List all available skills grouped by category.
- */
+// Get all skills by Category
+
 exports.listSkills = async (_req, res, next) => {
   try {
     const [rows] = await pool.query(
