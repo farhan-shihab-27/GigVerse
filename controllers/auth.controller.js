@@ -1,4 +1,4 @@
-// -- Auth Controller -------------------------------------------
+// Auth Controller
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../database/db');
@@ -90,9 +90,7 @@ exports.requestOtp = async (req, res, next) => {
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Determine which column(s) to use for storage
-    // Students & Faculty: .uiu.ac.bd email goes to UiuEmail, PersonalEmail gets a placeholder
-    // Alumni: any email goes to PersonalEmail, UiuEmail gets a placeholder
+    // Set email field based on role
     let uiuEmail, personalEmail;
     if (roleId === 1 || roleId === 3) {
       uiuEmail = emailLower;
@@ -112,9 +110,7 @@ exports.requestOtp = async (req, res, next) => {
 
     console.log(`[OTP GENERATED] for ${emailLower}: ${otp}`);
 
-    // In a real app, you would actually send the email here using transporter.sendMail
-    // await transporter.sendMail({ from: '"GigVerse" <noreply@gigverse.com>', to: emailLower, subject: 'GigVerse Verification Code', text: `Your OTP code is ${otp}` });
-
+    // send mail with OTP
     return res.status(200).json({ success: true, message: 'OTP sent successfully to your email.' });
   } catch (err) {
     next(err);

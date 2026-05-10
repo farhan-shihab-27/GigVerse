@@ -1,4 +1,4 @@
-// ── Order / Micro-Escrow Controller ─────────────────────────
+// Order / Micro-Escrow Controller
 const pool = require('../database/db');
 
 // create new order

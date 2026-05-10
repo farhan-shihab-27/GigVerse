@@ -1,7 +1,7 @@
-// ── Smart Search Controller ─────────────────────────────────
+// Smart Search Controller
 const pool = require('../database/db');
 
-/// Search contributors by skill (top pvp points first)
+// Search contributors by skill (top pvp points first)
 
 exports.searchBySkill = async (req, res, next) => {
   try {
