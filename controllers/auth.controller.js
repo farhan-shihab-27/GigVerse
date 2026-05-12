@@ -1,122 +1,244 @@
-// Auth Controller
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const pool = require('../database/db');
-const nodemailer = require('nodemailer');
+// auth.controller.js — GigVerse Authentication (OTP, Signup, Login)
+// ─────────────────────────────────────────────────────────────────
+// Schema mapping (NEVER MODIFIED):
+//   Users: UserID, RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail,
+//          PasswordHash, DOB, ProfilePicUrl, Bio, PVP_Points, AverageRating
+//   User_Private_Info: UserID, WhatsAppNumber, BkashNumber, BankAccountDetails
+// ─────────────────────────────────────────────────────────────────
+
+const bcrypt      = require('bcrypt');
+const jwt         = require('jsonwebtoken');
+const pool        = require('../database/db');
+const nodemailer  = require('nodemailer');
 
 const SALT_ROUNDS = 12;
-const JWT_SECRET = process.env.JWT_SECRET || 'change_me_to_a_long_random_string';
+const JWT_SECRET  = process.env.JWT_SECRET  || 'change_me_to_a_long_random_string';
 const JWT_EXPIRES = '7d';
 
-// Temporary OTP Store (In production, use Redis)
+// ── In-memory OTP Store (swap for Redis in production at scale) ──────────────
 const otpStore = new Map();
 
-// Dummy transporter for development
-const transporter = nodemailer.createTransport({
-  host: "smtp.ethereal.email",
-  port: 587,
-  secure: false,
-});
+// ── Nodemailer Transporter ──────────────────────────────────────────────────
+function createTransporter() {
+  // If Gmail SMTP credentials are configured, use them; otherwise fall back
+  // to a console-only mode so the server still boots in dev without .env creds.
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS, // 16-char Gmail App Password
+      },
+    });
+  }
 
+  // Dev fallback — OTP is logged to console
+  console.warn('[Nodemailer] SMTP_USER / SMTP_PASS not set — emails will only be logged to console.');
+  return null;
+}
+
+// ── Branded HTML email template ─────────────────────────────────────────────
+function buildOtpEmail(name, otp) {
+  return {
+    subject: `${otp} — Your GigVerse Verification Code`,
+    html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GigVerse OTP</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Inter',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#f26522 0%,#d95315 100%);padding:36px 40px;text-align:center;">
+            <table cellpadding="0" cellspacing="0" align="center">
+              <tr>
+                <td style="background:rgba(255,255,255,0.15);border-radius:14px;padding:10px 16px;">
+                  <span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
+                    ⚡ GigVerse
+                  </span>
+                </td>
+              </tr>
+            </table>
+            <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:14px 0 0;letter-spacing:0.3px;">
+              UIU Campus Freelance Platform
+            </p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:44px 48px 36px;">
+            <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">
+              Hello, ${name.split(' ')[0]}! 👋
+            </h1>
+            <p style="margin:0 0 28px;font-size:15px;color:#6b7280;line-height:1.6;">
+              Here is your one-time verification code to complete your GigVerse registration.
+            </p>
+
+            <!-- OTP Box -->
+            <div style="background:linear-gradient(135deg,#fff4eb 0%,#ffe6d1 100%);
+                        border:2px solid #ffc8a1;border-radius:16px;
+                        padding:28px;text-align:center;margin:0 0 28px;">
+              <p style="margin:0 0 8px;font-size:12px;font-weight:600;
+                         color:#b0420f;letter-spacing:2px;text-transform:uppercase;">
+                Verification Code
+              </p>
+              <p style="margin:0;font-size:48px;font-weight:800;
+                         color:#d95315;letter-spacing:14px;font-family:'Courier New',monospace;">
+                ${otp}
+              </p>
+            </div>
+
+            <p style="margin:0 0 12px;font-size:13px;color:#6b7280;line-height:1.6;">
+              This code is valid for <strong style="color:#111827;">10 minutes</strong>.
+              Do not share it with anyone.
+            </p>
+            <p style="margin:0;font-size:13px;color:#9ca3af;">
+              If you didn't request this, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9fafb;padding:24px 48px;border-top:1px solid #f0f0f0;">
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;line-height:1.8;">
+              © 2026 GigVerse · Exclusively for
+              <strong style="color:#f26522;">United International University</strong><br/>
+              This is an automated email — please do not reply.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  };
+}
+
+// ── POST /api/auth/request-otp ───────────────────────────────────────────────
 exports.requestOtp = async (req, res, next) => {
   try {
-    const { name, uiuId, email, whatsAppNumber, password, roleId, deptId, dob } = req.body;
+    const {
+      name, uiuId, email, whatsAppNumber, password,
+      roleId, deptId, dob,
+    } = req.body;
 
-    //  Legacy field support: accept uiuEmail/personalEmail from old clients ---
-    const resolvedEmail = email || req.body.uiuEmail || req.body.personalEmail;
+    // Accept legacy field aliases
+    const resolvedEmail = (email || req.body.uiuEmail || req.body.personalEmail || '').toLowerCase().trim();
 
+    // ── Required field guard ─────────────────────────────────────
     if (!name || !resolvedEmail || !whatsAppNumber || !password || !roleId) {
       return res.status(400).json({ success: false, message: 'Missing required fields.' });
     }
 
-    const isStudentOrAlumni = roleId === 1 || roleId === 2;
-    const isFaculty = roleId === 3;
-
-    const emailLower = resolvedEmail.toLowerCase().trim();
+    // ── UIU email enforcement (Students = 1, Faculty = 3) ────────
     if (roleId === 1 || roleId === 3) {
-      if (!emailLower.endsWith('.uiu.ac.bd')) {
-        return res.status(403).json({ success: false, message: 'Access Denied: Only official UIU emails (.uiu.ac.bd) are allowed for Students and Faculty.' });
+      if (!resolvedEmail.endsWith('.uiu.ac.bd')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Only official UIU emails (.uiu.ac.bd) are allowed for Students and Faculty.',
+        });
       }
     }
 
-    // Check for duplicate emails 
+    // ── Duplicate check ──────────────────────────────────────────
     const [existing] = await pool.query(
       'SELECT UserID FROM Users WHERE UiuEmail = ? OR PersonalEmail = ? OR (UiuId = ? AND UiuId IS NOT NULL)',
-      [emailLower, emailLower, uiuId || null]
+      [resolvedEmail, resolvedEmail, uiuId || null],
     );
     if (existing.length > 0) {
-      return res.status(409).json({ success: false, message: 'An account with this email or UIU ID already exists.' });
+      return res.status(409).json({
+        success: false,
+        message: 'An account with this email or UIU ID already exists.',
+      });
     }
 
-    //  The Master ID Validator (Students & Alumni) 
+    // ── UIU Student ID format validator (Students & Alumni) ──────
+    const isStudentOrAlumni = roleId === 1 || roleId === 2;
     if (isStudentOrAlumni && uiuId) {
-      if (uiuId.length !== 10) {
-        return res.status(400).json({ success: false, message: 'UIU Student ID must be exactly 10 digits.' });
+      if (uiuId.length !== 10 || isNaN(uiuId)) {
+        return res.status(400).json({ success: false, message: 'UIU Student ID must be exactly 10 numeric digits.' });
       }
-
-      // Fetch Department Code from DB
       const [deptRows] = await pool.query('SELECT DeptCode FROM Departments WHERE DeptID = ?', [deptId]);
       if (deptRows.length === 0) {
         return res.status(400).json({ success: false, message: 'Invalid Department selected.' });
       }
-
       const expectedPrefix = deptRows[0].DeptCode;
-      const prefix = uiuId.substring(0, 3);
-      const yearStr = uiuId.substring(3, 5);
-      const trimesterStr = uiuId.substring(5, 6);
-      const serialStr = uiuId.substring(6, 10);
-
-      // Prefix check
+      const prefix      = uiuId.substring(0, 3);
+      const trimesterCh = uiuId.substring(5, 6);
       if (prefix !== expectedPrefix) {
-        return res.status(400).json({ success: false, message: `ID Prefix does not match the selected department (Should be ${expectedPrefix}).` });
+        return res.status(400).json({
+          success: false,
+          message: `ID prefix mismatch — expected "${expectedPrefix}" for the selected department.`,
+        });
       }
-
-      // Year check
-      if (isNaN(yearStr)) {
-        return res.status(400).json({ success: false, message: 'Invalid Year digits in ID.' });
-      }
-
-      // Trimester check
-      if (!['1', '2', '3'].includes(trimesterStr)) {
-        return res.status(400).json({ success: false, message: 'Invalid Trimester digit. Must be 1, 2, or 3.' });
-      }
-
-      // Serial check
-      if (isNaN(serialStr)) {
-        return res.status(400).json({ success: false, message: 'Invalid Serial digits in ID.' });
+      if (!['1', '2', '3'].includes(trimesterCh)) {
+        return res.status(400).json({ success: false, message: 'Invalid trimester digit in UIU ID (must be 1, 2, or 3).' });
       }
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Set email field based on role
+    // ── Resolve UiuEmail & PersonalEmail columns ─────────────────
     let uiuEmail, personalEmail;
     if (roleId === 1 || roleId === 3) {
-      uiuEmail = emailLower;
-      personalEmail = `${emailLower.split('@')[0]}_personal@placeholder.gigverse`;
+      // Student / Faculty: their .uiu.ac.bd IS the UIU email
+      uiuEmail      = resolvedEmail;
+      personalEmail = `${resolvedEmail.split('@')[0]}_personal@placeholder.gigverse`;
     } else {
-      // Alumni
-      personalEmail = emailLower;
-      uiuEmail = `alumni_${Date.now()}@placeholder.gigverse`;
+      // Alumni: use a placeholder UIU email
+      personalEmail = resolvedEmail;
+      uiuEmail      = `alumni_${Date.now()}@placeholder.gigverse`;
     }
 
-    // Store in memory (expires in 10 mins)
-    otpStore.set(emailLower, {
+    // ── Generate 6-digit OTP ─────────────────────────────────────
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP + payload (expires 10 min)
+    otpStore.set(resolvedEmail, {
       otp,
-      expires: Date.now() + 10 * 60 * 1000,
-      userData: { name, uiuId, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob }
+      expires:  Date.now() + 10 * 60 * 1000,
+      userData: { name, uiuId, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob },
     });
 
-    console.log(`[OTP GENERATED] for ${emailLower}: ${otp}`);
+    // ── Send email ───────────────────────────────────────────────
+    const transporter = createTransporter();
+    if (transporter) {
+      const { subject, html } = buildOtpEmail(name, otp);
+      try {
+        await transporter.sendMail({
+          from: `"GigVerse Platform" <${process.env.SMTP_USER}>`,
+          to:   resolvedEmail,
+          subject,
+          html,
+        });
+        console.log(`[OTP] Email sent to ${resolvedEmail}`);
+      } catch (mailErr) {
+        console.error('[OTP] Email delivery failed:', mailErr.message);
+        // Don't block the user — still log the OTP
+      }
+    }
 
-    // send mail with OTP
-    return res.status(200).json({ success: true, message: 'OTP sent successfully to your email.' });
+    // Always log in dev for easy testing
+    console.log(`[OTP] ${resolvedEmail} → ${otp}`);
+
+    return res.status(200).json({ success: true, message: 'Verification code sent to your email.' });
   } catch (err) {
     next(err);
   }
 };
 
+// ── POST /api/auth/verify-otp ────────────────────────────────────────────────
 exports.verifyOtp = async (req, res, next) => {
   try {
     const resolvedEmail = (req.body.email || req.body.uiuEmail || '').toLowerCase().trim();
@@ -125,74 +247,88 @@ exports.verifyOtp = async (req, res, next) => {
     if (!record) {
       return res.status(400).json({ success: false, message: 'OTP request not found or expired. Please sign up again.' });
     }
-
     if (Date.now() > record.expires) {
       otpStore.delete(resolvedEmail);
-      return res.status(400).json({ success: false, message: 'OTP has expired.' });
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
     }
-
-    if (record.otp !== req.body.otp) {
+    if (record.otp !== String(req.body.otp).trim()) {
       return res.status(400).json({ success: false, message: 'Invalid verification code.' });
     }
 
-    // OTP is valid! Proceed to create user
+    // ── OTP verified — create user ───────────────────────────────
     const { name, uiuId, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob } = record.userData;
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
+    // Clamp deptId to valid DB range (1–18)
+    const safeDeptId = (Number(deptId) >= 1 && Number(deptId) <= 18) ? Number(deptId) : 1;
+
     const [result] = await pool.query(
-      `INSERT INTO Users (RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail, PasswordHash, DOB)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [roleId, deptId || 1, name, uiuId || null, uiuEmail, personalEmail, passwordHash, dob || null]
+      `INSERT INTO Users
+         (RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail, PasswordHash, DOB, Bio)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [roleId, safeDeptId, name, uiuId || null, uiuEmail, personalEmail, passwordHash, dob || null, 'New member of GigVerse'],
     );
 
-    await pool.query('INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails) VALUES (?, ?, NULL, NULL)', [result.insertId, whatsAppNumber || null]);
-    await pool.query('UPDATE Users SET Bio = ? WHERE UserID = ?', ['New member of GigVerse', result.insertId]);
+    await pool.query(
+      `INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails)
+       VALUES (?, ?, NULL, NULL)`,
+      [result.insertId, whatsAppNumber || null],
+    );
 
-    otpStore.delete(resolvedEmail); // Clean up
+    otpStore.delete(resolvedEmail);
 
-    return res.status(201).json({ success: true, message: 'Registration successful.', data: { userId: result.insertId } });
+    return res.status(201).json({
+      success: true,
+      message: 'Registration successful! Welcome to GigVerse.',
+      data:    { userId: result.insertId },
+    });
   } catch (err) {
     next(err);
   }
 };
 
-exports.register = async (req, res, next) => {
-  // Deprecated endpoint
-  return res.status(400).json({ success: false, message: 'Use request-otp and verify-otp instead.' });
+// ── POST /api/auth/register (deprecated) ────────────────────────────────────
+exports.register = async (_req, res) => {
+  return res.status(410).json({ success: false, message: 'Deprecated. Use /request-otp and /verify-otp.' });
 };
 
+// ── POST /api/auth/login ─────────────────────────────────────────────────────
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Both email and password are required.' });
     }
 
     const emailLower = email.toLowerCase().trim();
-
     const [rows] = await pool.query(
       'SELECT * FROM Users WHERE UiuEmail = ? OR PersonalEmail = ?',
-      [emailLower, emailLower]
+      [emailLower, emailLower],
     );
-
     if (rows.length === 0) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
-    const user = rows[0];
+    const user  = rows[0];
     const match = await bcrypt.compare(password, user.PasswordHash);
     if (!match) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
-    const tokenPayload = { userId: user.UserID, roleId: user.RoleID, uiuEmail: user.UiuEmail };
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    const token = jwt.sign(
+      { userId: user.UserID, roleId: user.RoleID, uiuEmail: user.UiuEmail },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES },
+    );
 
     const { PasswordHash, ...safeUser } = user;
 
-    return res.json({ success: true, message: 'Login successful.', data: { token, user: safeUser } });
+    return res.json({
+      success: true,
+      message: 'Login successful.',
+      data:    { token, user: safeUser },
+    });
   } catch (err) {
     next(err);
   }
