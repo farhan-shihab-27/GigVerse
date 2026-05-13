@@ -423,3 +423,81 @@ exports.getPublicProfile = async (req, res, next) => {
     next(err);
   }
 };
+
+// ── GET /api/users/profile/status ────────────────────────────────────────────
+exports.checkProfileCompletion = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const [[user]] = await pool.query(
+      'SELECT Bio, ProfilePicUrl FROM Users WHERE UserID = ?', [userId]
+    );
+    const [[{ skillCount }]] = await pool.query(
+      'SELECT COUNT(*) AS skillCount FROM User_Skills WHERE UserID = ?', [userId]
+    );
+    const missing = [];
+    if (!user.ProfilePicUrl) missing.push('avatar');
+    if (!user.Bio || user.Bio === 'New member of GigVerse') missing.push('bio');
+    if (Number(skillCount) < 3) missing.push('skills');
+    return res.json({ success: true, data: { isComplete: missing.length === 0, missing } });
+  } catch (err) { next(err); }
+};
+
+// ── POST /api/users/profile/complete ─────────────────────────────────────────
+// Accepts { bio, profilePicUrl, deptId, skillNames:[{category,skill}] }
+// Auto-inserts missing Categories and Skills, then syncs User_Skills.
+exports.completeProfile = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const userId = req.user.userId;
+    const { bio, profilePicUrl, deptId, skillNames = [] } = req.body;
+
+    await conn.beginTransaction();
+
+    // 1. Update Users table
+    const uFields = []; const uVals = [];
+    if (bio)           { uFields.push('Bio = ?');           uVals.push(bio); }
+    if (profilePicUrl) { uFields.push('ProfilePicUrl = ?'); uVals.push(profilePicUrl); }
+    if (deptId)        { uFields.push('DeptID = ?');        uVals.push(Number(deptId)); }
+    if (uFields.length > 0) {
+      uVals.push(userId);
+      await conn.query(`UPDATE Users SET ${uFields.join(', ')} WHERE UserID = ?`, uVals);
+    }
+
+    // 2. Resolve / auto-insert Categories and Skills, collect SkillIDs
+    const skillIdSet = [];
+    for (const { category, skill } of skillNames) {
+      // Upsert category
+      await conn.query('INSERT IGNORE INTO Categories (CategoryName) VALUES (?)', [category]);
+      const [[cat]] = await conn.query(
+        'SELECT CategoryID FROM Categories WHERE CategoryName = ?', [category]
+      );
+      // Upsert skill
+      await conn.query(
+        'INSERT IGNORE INTO Skills (CategoryID, SkillName) VALUES (?, ?)',
+        [cat.CategoryID, skill]
+      );
+      const [[sk]] = await conn.query(
+        'SELECT SkillID FROM Skills WHERE SkillName = ? AND CategoryID = ?',
+        [skill, cat.CategoryID]
+      );
+      skillIdSet.push(sk.SkillID);
+    }
+
+    // 3. Replace User_Skills
+    await conn.query('DELETE FROM User_Skills WHERE UserID = ?', [userId]);
+    if (skillIdSet.length > 0) {
+      await conn.query(
+        'INSERT INTO User_Skills (UserID, SkillID) VALUES ?',
+        [skillIdSet.map(sid => [userId, sid])]
+      );
+    }
+
+    await conn.commit();
+    return res.json({ success: true, message: 'Profile completed successfully.' });
+  } catch (err) {
+    await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
+};

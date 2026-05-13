@@ -57,3 +57,29 @@ exports.listSkills = async (_req, res, next) => {
     next(err);
   }
 };
+
+// GET /api/search/autocomplete?q=term  — returns up to 8 mixed results
+exports.autocomplete = async (req, res, next) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (q.length < 2) return res.json({ success: true, data: [] });
+    const like = `%${q}%`;
+
+    // Skills matching
+    const [skills] = await pool.query(
+      `SELECT s.SkillName AS label, c.CategoryName AS sub, 'skill' AS type, NULL AS id
+       FROM Skills s JOIN Categories c ON s.CategoryID = c.CategoryID
+       WHERE s.SkillName LIKE ? LIMIT 4`, [like]
+    );
+
+    // Users matching
+    const [users] = await pool.query(
+      `SELECT u.Name AS label, d.DeptName AS sub, 'user' AS type, u.UserID AS id
+       FROM Users u JOIN Departments d ON u.DeptID = d.DeptID
+       WHERE u.Name LIKE ? ORDER BY u.PVP_Points DESC LIMIT 4`, [like]
+    );
+
+    return res.json({ success: true, data: [...skills, ...users] });
+  } catch (err) { next(err); }
+};
+

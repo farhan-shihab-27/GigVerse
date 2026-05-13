@@ -1,4 +1,4 @@
-// src/pages/Home.jsx — Gig Discovery Homepage
+// src/pages/Home.jsx — Smart Router: Workspace for auth users, Marketing for guests
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -7,7 +7,9 @@ import {
   ArrowRight, Loader2, AlertCircle, ImageOff
 } from 'lucide-react';
 import CategoryCard from '../components/CategoryCard';
-import { gigAPI } from '../lib/api';
+import { gigAPI, userAPI } from '../lib/api';
+import WorkspaceHome from './WorkspaceHome';
+import ProfileCompletionModal from '../components/ProfileCompletionModal';
 
 const CATEGORIES = [
   { id: 1, title: 'Web Development', icon: Code2, gigCount: 24, color: '#3b82f6' },
@@ -32,8 +34,46 @@ export default function Home() {
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Auth / profile completion state
+  const [isLoggedIn] = useState(() => Boolean(localStorage.getItem('gv_token')));
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
+  const userName = (() => { try { return JSON.parse(localStorage.getItem('gv_user'))?.Name || ''; } catch { return ''; } })();
 
-  useEffect(() => { fetchGigs(); }, []);
+  // For logged-in users: check profile completeness on mount
+  useEffect(() => {
+    if (!isLoggedIn) { setProfileChecked(true); return; }
+    userAPI.getProfileStatus()
+      .then(r => { if (!r.data.data.isComplete) setShowCompletion(true); })
+      .catch(() => {})
+      .finally(() => setProfileChecked(true));
+  }, [isLoggedIn]);
+
+  // If authenticated, render workspace (with optional onboarding overlay)
+  if (isLoggedIn && profileChecked) {
+    return (
+      <>
+        <WorkspaceHome />
+        {showCompletion && (
+          <ProfileCompletionModal
+            userName={userName}
+            onComplete={() => setShowCompletion(false)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Loading state while checking auth
+  if (isLoggedIn && !profileChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0d0d14' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: '#f26522' }} />
+      </div>
+    );
+  }
+
+  // ── Anonymous marketing landing page (unchanged) ──────────────────────────
 
   const fetchGigs = async () => {
     setLoading(true); setError('');
@@ -41,6 +81,9 @@ export default function Home() {
     catch { setError('Failed to load gigs. Please try again.'); }
     finally { setLoading(false); }
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchGigs(); }, []);
 
   const navigate = useNavigate();
   const handleHeroSearch = (e) => {

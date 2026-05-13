@@ -38,9 +38,11 @@ export const authAPI = {
 
 // User / Profile 
 export const userAPI = {
-  getMyProfile: () => api.get('/users/profile'),
-  updateMyProfile: (data) => api.put('/users/profile', data),
-  getLeaderboard: (limit = 100) => api.get(`/users/leaderboard?limit=${limit}`),
+  getMyProfile:     () => api.get('/users/profile'),
+  updateMyProfile:  (data) => api.put('/users/profile', data),
+  getLeaderboard:   (limit = 100) => api.get(`/users/leaderboard?limit=${limit}`),
+  getProfileStatus: () => api.get('/users/profile/status'),
+  completeProfile:  (data) => api.post('/users/profile/complete', data),
 };
 
 // Gigs 
@@ -55,6 +57,13 @@ export const orderAPI = {
   getMyOrders: () => api.get('/orders/my'),
   getById: (id) => api.get(`/orders/${id}`),
   getContributorContact: (userId) => api.get(`/orders/contact/${userId}`),
+};
+
+// Search
+export const searchAPI = {
+  autocomplete:   (q) => api.get(`/search/autocomplete?q=${encodeURIComponent(q)}`),
+  contributors:   (skill) => api.get(`/search/contributors?skill=${encodeURIComponent(skill)}`),
+  skills:         () => api.get('/search/skills'),
 };
 
 export default api;
