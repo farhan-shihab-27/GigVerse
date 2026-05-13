@@ -1,65 +1,60 @@
-// src/pages/WorkspaceHome.jsx — Authenticated 3-column Workspace
+// src/pages/WorkspaceHome.jsx — Light-Theme 3-Column Workspace
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Briefcase, MessageSquare,
-  Trophy, Wallet, Search, Bell, Star, Zap, LogOut,
-  User, TrendingUp, Loader2, AlertCircle, ImageOff,
-  ChevronRight, Tag, X
+  Trophy, Wallet, Search, Bell, Star, Zap, LogOut, Award,
+  User, TrendingUp, Loader2, ImageOff, ChevronRight, Tag,
+  X, GripVertical, ShieldCheck, ArrowUpRight
 } from 'lucide-react';
 import { gigAPI, userAPI, searchAPI } from '../lib/api';
 
-// ── Sidebar nav items ────────────────────────────────────────────────────────
 const NAV = [
-  { icon: LayoutDashboard, label: 'Dashboard',  to: '/home' },
-  { icon: ClipboardList,   label: 'My Orders',  to: '/orders' },
-  { icon: Briefcase,       label: 'My Gigs',    to: '/search' },
-  { icon: MessageSquare,   label: 'Messages',   to: '/home', badge: 0 },
-  { icon: Trophy,          label: 'Leaderboard',to: '/leaderboard' },
-  { icon: Wallet,          label: 'PVP Wallet', to: '/home' },
+  { icon: LayoutDashboard, label: 'Dashboard',   to: '/home' },
+  { icon: ClipboardList,   label: 'My Orders',   to: '/orders' },
+  { icon: Briefcase,       label: 'Browse Gigs', to: '/search' },
+  { icon: MessageSquare,   label: 'Messages',    to: '/home' },
+  { icon: Trophy,          label: 'Leaderboard', to: '/leaderboard' },
+  { icon: Wallet,          label: 'PVP Wallet',  to: '/home' },
 ];
 
 const CATEGORIES = ['All', 'Development', 'Design', 'Writing', 'Marketing', 'Tutoring'];
 
-function useDebounce(value, delay) {
-  const [deb, setDeb] = useState(value);
-  useEffect(() => { const t = setTimeout(() => setDeb(value), delay); return () => clearTimeout(t); }, [value, delay]);
-  return deb;
+function useDebounce(val, delay) {
+  const [d, setD] = useState(val);
+  useEffect(() => { const t = setTimeout(() => setD(val), delay); return () => clearTimeout(t); }, [val, delay]);
+  return d;
 }
 
 export default function WorkspaceHome() {
   const navigate = useNavigate();
-  const [profile, setProfile]       = useState(null);
-  const [gigs, setGigs]             = useState([]);
-  const [gigsLoading, setGigsLoading] = useState(true);
-  const [activeCategory, setActiveCat] = useState('All');
-  const [query, setQuery]           = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [sugLoading, setSugLoading] = useState(false);
-  const [showSug, setShowSug]       = useState(false);
-  const [notifications]             = useState([
-    { id:1, text:'Your order #42 has been delivered.',  time:'2m ago' },
-    { id:2, text:'New review posted on your gig.',      time:'1h ago' },
-    { id:3, text:'You received 50 PVP points!',         time:'3h ago' },
-  ]);
-  const searchRef = useRef();
-  const debQuery  = useDebounce(query, 300);
+  const [profile, setProfile]           = useState(null);
+  const [gigs, setGigs]                 = useState([]);
+  const [gigsLoading, setGigsLoading]   = useState(true);
+  const [activeCategory, setActiveCat]  = useState('All');
+  const [query, setQuery]               = useState('');
+  const [suggestions, setSuggestions]   = useState([]);
+  const [sugLoading, setSugLoading]     = useState(false);
+  const [showSug, setShowSug]           = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(288);
 
-  const user = (() => { try { return JSON.parse(localStorage.getItem('gv_user')) || {}; } catch { return {}; } })();
+  // Draggable resize state
+  const isDragging = useRef(false);
+  const startX     = useRef(0);
+  const startW     = useRef(0);
+
+  const debQuery = useDebounce(query, 300);
+  const user     = (() => { try { return JSON.parse(localStorage.getItem('gv_user')) || {}; } catch { return {}; } })();
   const initials = (user.Name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-  // ── Fetch profile ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    userAPI.getMyProfile().then(r => setProfile(r.data.data)).catch(() => {});
-  }, []);
+  const firstName = (profile?.Name || user.Name || '').split(' ')[0] || 'there';
 
-  // ── Fetch gigs ────────────────────────────────────────────────────────────
+  useEffect(() => { userAPI.getMyProfile().then(r => setProfile(r.data.data)).catch(() => {}); }, []);
   useEffect(() => {
     setGigsLoading(true);
     gigAPI.getAll(12).then(r => setGigs(r.data.data || [])).catch(() => {}).finally(() => setGigsLoading(false));
   }, []);
 
-  // ── Autocomplete ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (debQuery.length < 2) { setSuggestions([]); return; }
     setSugLoading(true);
@@ -68,6 +63,29 @@ export default function WorkspaceHome() {
       .catch(() => setSuggestions([]))
       .finally(() => setSugLoading(false));
   }, [debQuery]);
+
+  // Drag handlers
+  const onDragStart = useCallback((e) => {
+    isDragging.current = true;
+    startX.current = e.clientX;
+    startW.current = sidebarWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDragging.current) return;
+      const delta = startX.current - ev.clientX;
+      setSidebarWidth(Math.min(500, Math.max(250, startW.current + delta)));
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [sidebarWidth]);
 
   const handleSugClick = (item) => {
     setShowSug(false); setQuery('');
@@ -80,312 +98,332 @@ export default function WorkspaceHome() {
     navigate('/auth');
   };
 
-  const filteredGigs = activeCategory === 'All' ? gigs : gigs.filter(g =>
-    g.CategoryName === activeCategory || g.DeptName?.includes(activeCategory)
-  );
+  const filteredGigs = activeCategory === 'All' ? gigs
+    : gigs.filter(g => g.CategoryName === activeCategory || g.DeptName?.includes(activeCategory));
+
+  const skillCount = profile?.skills?.length ?? 0;
+  const profilePct = Math.min(100, [
+    !!profile?.Name, !!profile?.Bio && profile.Bio !== 'New member of GigVerse',
+    !!profile?.ProfilePicUrl, skillCount >= 3,
+  ].filter(Boolean).length * 25);
+
+  // Quick-stat cards data
+  const QUICK_STATS = [
+    { icon: ClipboardList, label: 'Active Orders',      value: '—',        color: '#3b82f6', bg: '#eff6ff' },
+    { icon: Zap,           label: 'Available PVP',      value: profile?.PVP_Points ?? '—', color: '#f26522', bg: '#fff4eb' },
+    { icon: Star,          label: 'Avg. Rating',        value: profile ? Number(profile.AverageRating).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb' },
+    { icon: ShieldCheck,   label: 'Profile Completion', value: `${profilePct}%`, color: '#10b981', bg: '#f0fdf4' },
+  ];
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#0d0d14', fontFamily: "'Inter', sans-serif" }}>
+    /* Root: fills the space BELOW the sticky Navbar (h-16 = 4rem) */
+    <div className="flex bg-gray-50 bg-dora-kata" style={{ height: 'calc(100vh - 4rem)' }}>
 
-      {/* ── LEFT SIDEBAR ──────────────────────────────────────────────────── */}
-      <aside className="w-64 flex flex-col shrink-0 border-r"
-        style={{ background: 'linear-gradient(180deg, #0f0f1c 0%, #130c06 100%)', borderColor: 'rgba(255,255,255,0.06)' }}>
-
-        {/* Logo */}
-        <div className="px-6 py-5 border-b flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #f26522, #d95315)', boxShadow: '0 4px 12px rgba(242,101,34,0.4)' }}>
-            <Zap size={16} className="text-white fill-white" />
-          </div>
-          <span className="text-base font-extrabold tracking-tight">
-            <span style={{ background: 'linear-gradient(135deg, #f26522, #f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Gig</span>
-            <span className="text-white">Verse</span>
-          </span>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ icon: Icon, label, to, badge }) => {
+      {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
+      <aside className="w-56 flex flex-col shrink-0 bg-white border-r border-gray-100 shadow-sm">
+        {/* Nav */}
+        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+          <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Main Menu</p>
+          {NAV.map(({ icon: Icon, label, to }) => {
             const active = window.location.pathname === to && label === 'Dashboard';
             return (
               <Link key={label} to={to}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative group"
-                style={{
-                  color: active ? '#f97316' : 'rgba(255,255,255,0.45)',
-                  background: active ? 'rgba(242,101,34,0.12)' : 'transparent',
-                }}>
-                {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ background: '#f26522' }} />}
-                <Icon size={16} className="shrink-0" />
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative group
+                  ${active ? 'bg-brand-50 text-brand-600' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>
+                {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-500 rounded-full" />}
+                <Icon size={15} className="shrink-0" />
                 <span>{label}</span>
-                {badge > 0 && (
-                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#f26522', color: '#fff' }}>{badge}</span>
-                )}
-                <span className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ChevronRight size={12} style={{ color: 'rgba(255,255,255,0.2)' }} />
-                </span>
+                <ChevronRight size={11} className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity" />
               </Link>
             );
           })}
         </nav>
 
         {/* Sidebar footer */}
-        <div className="px-4 py-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="px-3 py-3 border-t border-gray-100">
           <button onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-            style={{ color: 'rgba(239,68,68,0.6)' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-600 hover:bg-red-50 transition-all duration-150">
             <LogOut size={15} /><span>Sign Out</span>
           </button>
         </div>
       </aside>
 
-      {/* ── CENTER FEED ───────────────────────────────────────────────────── */}
+      {/* ── CENTER FEED ──────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden">
 
-        {/* Top bar */}
-        <div className="px-6 py-4 border-b flex items-center gap-4 shrink-0"
-          style={{ background: 'rgba(13,13,20,0.95)', borderColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)' }}>
-
-          {/* Search bar */}
-          <div className="flex-1 relative" ref={searchRef}>
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-200"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              onFocus={() => setShowSug(true)}>
-              <Search size={15} style={{ color: 'rgba(255,255,255,0.3)' }} />
-              <input
-                type="text" value={query}
+        {/* Search bar row */}
+        <div className="px-6 py-3 bg-white border-b border-gray-100 shrink-0">
+          <div className="relative max-w-2xl mx-auto">
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 hover:border-brand-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 transition-all duration-200">
+              <Search size={15} className="text-gray-400 shrink-0" />
+              <input type="text" value={query}
                 onChange={e => { setQuery(e.target.value); setShowSug(true); }}
                 onFocus={() => setShowSug(true)}
                 onBlur={() => setTimeout(() => setShowSug(false), 150)}
-                placeholder="Search gigs, skills, contributors..."
-                className="flex-1 bg-transparent text-sm focus:outline-none"
-                style={{ color: 'rgba(255,255,255,0.8)', caretColor: '#f26522' }}
+                placeholder='Search gigs, skills, contributors...'
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
               />
-              {query && (
-                <button onClick={() => { setQuery(''); setSuggestions([]); }} style={{ color: 'rgba(255,255,255,0.25)' }}>
-                  <X size={13} />
-                </button>
-              )}
-              {sugLoading && <Loader2 size={13} className="animate-spin" style={{ color: '#f26522' }} />}
+              {query && <button onClick={() => { setQuery(''); setSuggestions([]); }} className="text-gray-300 hover:text-gray-500"><X size={13} /></button>}
+              {sugLoading && <Loader2 size={13} className="animate-spin text-brand-500" />}
             </div>
 
             {/* Suggestions dropdown */}
-            {showSug && (query.length >= 2) && (
-              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50"
-                style={{ background: 'rgba(15,15,28,0.98)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', backdropFilter: 'blur(20px)' }}>
-                {suggestions.length === 0 && !sugLoading && (
-                  <div className="px-5 py-4 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>No results for "{query}"</div>
-                )}
-                {suggestions.map((item, i) => (
-                  <button key={i} onMouseDown={() => handleSugClick(item)}
-                    className="flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-100"
-                    style={{ borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(242,101,34,0.08)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: item.type === 'user' ? 'rgba(242,101,34,0.15)' : 'rgba(255,255,255,0.07)' }}>
-                      {item.type === 'user' ? <User size={13} style={{ color: '#f97316' }} /> : <Tag size={13} style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.85)' }}>{item.label}</p>
-                      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{item.sub} · {item.type === 'user' ? 'Contributor' : 'Skill'}</p>
-                    </div>
-                  </button>
-                ))}
+            {showSug && query.length >= 2 && (
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50 bg-white border border-gray-200 shadow-xl shadow-gray-200/60 animate-slide-up">
+                {suggestions.length === 0 && !sugLoading
+                  ? <div className="px-5 py-4 text-sm text-gray-400">No results for "{query}"</div>
+                  : suggestions.map((item, i) => (
+                    <button key={i} onMouseDown={() => handleSugClick(item)}
+                      className="flex items-center gap-3 w-full px-5 py-3 text-left hover:bg-brand-50 transition-colors duration-100"
+                      style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${item.type === 'user' ? 'bg-brand-50' : 'bg-gray-100'}`}>
+                        {item.type === 'user' ? <User size={13} className="text-brand-500" /> : <Tag size={13} className="text-gray-400" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                        <p className="text-xs text-gray-400">{item.sub} · {item.type === 'user' ? 'Contributor' : 'Skill'}</p>
+                      </div>
+                      <ArrowUpRight size={13} className="ml-auto text-gray-300" />
+                    </button>
+                  ))
+                }
               </div>
             )}
           </div>
-
-          {/* Notification bell */}
-          <button className="relative p-2.5 rounded-xl transition-colors duration-150"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <Bell size={16} style={{ color: 'rgba(255,255,255,0.5)' }} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-500 ring-2" style={{ ringColor: '#0d0d14' }} />
-          </button>
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}>
 
-          {/* Category chips */}
-          <div className="flex gap-2 mb-6 flex-wrap">
-            {CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => setActiveCat(cat)}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
-                style={{
-                  background: activeCategory === cat ? 'rgba(242,101,34,0.2)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${activeCategory === cat ? 'rgba(242,101,34,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                  color: activeCategory === cat ? '#f97316' : 'rgba(255,255,255,0.4)',
-                }}>
-                {cat}
-              </button>
-            ))}
-          </div>
+          {/* ── Welcome Dashboard Summary ── */}
+          <section>
+            <div className="mb-5">
+              <h1 className="text-xl font-extrabold text-gray-900">
+                Welcome back, <span className="text-brand-500">{firstName}</span>
+              </h1>
+              <p className="text-sm text-gray-400 mt-0.5">Here is your workspace overview for today.</p>
+            </div>
 
-          {/* Section header */}
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-base font-bold text-white">Gig Discovery</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Latest services from UIU contributors</p>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#f97316' }}>
-              <TrendingUp size={13} />Trending
-            </div>
-          </div>
-
-          {/* Gigs grid */}
-          {gigsLoading && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 size={28} className="animate-spin" style={{ color: '#f26522' }} />
-            </div>
-          )}
-          {!gigsLoading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredGigs.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center py-16 gap-3">
-                  <ImageOff size={36} style={{ color: 'rgba(255,255,255,0.15)' }} />
-                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>No gigs in this category yet.</p>
-                </div>
-              ) : filteredGigs.map(gig => {
-                const initials2 = (gig.ContributorName || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-                return (
-                  <Link to={`/profile/${gig.ContributorID}`} key={gig.GigID}
-                    className="rounded-2xl overflow-hidden group transition-all duration-200 hover:-translate-y-1 block"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 2px 20px rgba(0,0,0,0.2)' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(242,101,34,0.3)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(242,101,34,0.12)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.boxShadow = '0 2px 20px rgba(0,0,0,0.2)'; }}>
-                    {/* Gig image */}
-                    {gig.PrimaryImage ? (
-                      <div className="w-full h-36 overflow-hidden">
-                        <img src={gig.PrimaryImage} alt={gig.Title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      </div>
-                    ) : (
-                      <div className="w-full h-36 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(242,101,34,0.08), rgba(242,101,34,0.03))' }}>
-                        <Briefcase size={32} style={{ color: 'rgba(242,101,34,0.2)' }} />
-                      </div>
-                    )}
-                    <div className="p-4">
-                      <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-2"
-                        style={{ background: 'rgba(242,101,34,0.12)', color: '#f97316' }}>
-                        {gig.DeptName || 'Campus'}
-                      </span>
-                      <h3 className="text-sm font-semibold mb-3 line-clamp-2 leading-snug" style={{ color: 'rgba(255,255,255,0.85)' }}>{gig.Title}</h3>
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                          style={{ background: 'linear-gradient(135deg, #f26522, #d95315)' }}>
-                          {gig.ProfilePicUrl ? <img src={gig.ProfilePicUrl} alt="" className="w-full h-full rounded-full object-cover" /> : initials2}
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>{gig.ContributorName}</p>
-                          <p className="text-[10px] font-semibold" style={{ color: '#f97316' }}>{gig.PVP_Points} PVP</p>
-                        </div>
-                        {gig.AverageRating > 0 && (
-                          <div className="ml-auto flex items-center gap-1">
-                            <Star size={11} className="fill-amber-400 text-amber-400" />
-                            <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>{Number(gig.AverageRating).toFixed(1)}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                        <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Starting at</span>
-                        <span className="text-sm font-extrabold" style={{ color: '#f97316' }}>&#2547;{Number(gig.BasePrice).toLocaleString()}</span>
-                      </div>
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+              {QUICK_STATS.map(({ icon: Icon, label, value, color, bg }) => (
+                <div key={label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+                      <Icon size={16} style={{ color }} />
                     </div>
-                  </Link>
-                );
-              })}
+                    <ArrowUpRight size={13} className="text-gray-300" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-gray-900">{value}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+                </div>
+              ))}
             </div>
-          )}
+
+            {/* Profile completion bar */}
+            {profilePct < 100 && (
+              <div className="bg-white rounded-2xl border border-brand-100 p-4 shadow-sm flex items-center gap-4">
+                <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                  <Award size={16} className="text-brand-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-gray-700">Profile Completion</p>
+                    <span className="text-xs font-bold text-brand-500">{profilePct}%</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-brand-500 to-orange-400 rounded-full transition-all duration-500"
+                      style={{ width: `${profilePct}%` }} />
+                  </div>
+                </div>
+                <Link to="/profile" className="shrink-0 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">
+                  Complete
+                </Link>
+              </div>
+            )}
+          </section>
+
+          {/* ── Gig Discovery ── */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-extrabold text-gray-900">Featured Services</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Top gigs from verified UIU contributors</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-500">
+                <TrendingUp size={13} />Trending
+              </div>
+            </div>
+
+            {/* Category chips */}
+            <div className="flex gap-2 mb-5 flex-wrap">
+              {CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => setActiveCat(cat)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 border
+                    ${activeCategory === cat
+                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm shadow-brand-200'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-brand-300 hover:text-brand-500'}`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Gigs grid */}
+            {gigsLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={24} className="animate-spin text-brand-500" />
+                <span className="ml-3 text-sm text-gray-400">Loading gigs...</span>
+              </div>
+            )}
+            {!gigsLoading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredGigs.length === 0 ? (
+                  <div className="col-span-full flex flex-col items-center py-14 gap-3">
+                    <ImageOff size={32} className="text-gray-200" />
+                    <p className="text-sm text-gray-400">No gigs in this category yet.</p>
+                  </div>
+                ) : filteredGigs.map(gig => {
+                  const gi = (gig.ContributorName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  return (
+                    <Link to={`/profile/${gig.ContributorID}`} key={gig.GigID}
+                      className="card hover:-translate-y-1 hover:shadow-brand hover:border-t-brand-600 group block transition-all duration-200 overflow-hidden">
+                      {/* Image */}
+                      {gig.PrimaryImage ? (
+                        <div className="w-full h-36 overflow-hidden">
+                          <img src={gig.PrimaryImage} alt={gig.Title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        </div>
+                      ) : (
+                        <div className="w-full h-36 bg-gradient-to-br from-brand-50 to-orange-50 flex items-center justify-center">
+                          <Briefcase size={28} className="text-brand-200" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-brand-50 text-brand-600 px-2.5 py-0.5 rounded-full mb-2">
+                          {gig.DeptName || 'Campus'}
+                        </span>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug">{gig.Title}</h3>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-brand-gradient overflow-hidden">
+                            {gig.ProfilePicUrl ? <img src={gig.ProfilePicUrl} alt="" className="w-full h-full object-cover" /> : gi}
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-700">{gig.ContributorName}</p>
+                            <p className="text-[10px] font-semibold text-brand-500">{gig.PVP_Points} PVP</p>
+                          </div>
+                          {gig.AverageRating > 0 && (
+                            <div className="ml-auto flex items-center gap-1">
+                              <Star size={11} className="fill-amber-400 text-amber-400" />
+                              <span className="text-xs font-semibold text-gray-600">{Number(gig.AverageRating).toFixed(1)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <span className="text-[10px] text-gray-400">Starting at</span>
+                          <span className="text-sm font-extrabold text-brand-600">&#2547;{Number(gig.BasePrice).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       </main>
 
-      {/* ── RIGHT SIDEBAR ─────────────────────────────────────────────────── */}
-      <aside className="w-72 shrink-0 border-l overflow-y-auto"
-        style={{ background: 'rgba(13,13,20,0.9)', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <div className="px-5 py-6 space-y-5">
+      {/* ── DRAG HANDLE + RIGHT SIDEBAR ──────────────────────────────────── */}
+      <div className="flex shrink-0" style={{ width: sidebarWidth }}>
+        {/* Drag handle */}
+        <div
+          className="w-3 flex items-center justify-center cursor-col-resize group shrink-0 border-l border-gray-100 hover:border-brand-200 transition-colors duration-150 bg-white"
+          onMouseDown={onDragStart}
+          title="Drag to resize">
+          <GripVertical size={12} className="text-gray-300 group-hover:text-brand-400 transition-colors duration-150" />
+        </div>
 
-          {/* Mini Profile Card */}
-          <div className="rounded-2xl p-5 text-center"
-            style={{ background: 'linear-gradient(135deg, rgba(242,101,34,0.12) 0%, rgba(242,101,34,0.04) 100%)', border: '1px solid rgba(242,101,34,0.2)' }}>
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-extrabold mx-auto mb-3 overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #f26522, #d95315)', boxShadow: '0 4px 20px rgba(242,101,34,0.4)' }}>
-              {profile?.ProfilePicUrl
-                ? <img src={profile.ProfilePicUrl} alt="" className="w-full h-full object-cover" />
-                : initials}
-            </div>
-            <h3 className="text-sm font-bold text-white mb-0.5">{profile?.Name || user.Name || 'Loading...'}</h3>
-            <p className="text-xs mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>{profile?.RoleName} · {profile?.DeptCode}</p>
+        {/* Right sidebar content */}
+        <aside className="flex-1 overflow-y-auto bg-white border-l border-gray-100" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}>
+          <div className="p-4 space-y-5">
 
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <div className="rounded-xl p-2.5 text-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <p className="text-lg font-extrabold" style={{ color: '#f97316' }}>{profile?.PVP_Points ?? '—'}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>PVP Points</p>
+            {/* Mini Profile Card */}
+            <div className="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 to-orange-50/30 p-5 text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-extrabold mx-auto mb-3 overflow-hidden shadow-brand"
+                style={{ background: 'linear-gradient(135deg, #f26522, #d95315)' }}>
+                {profile?.ProfilePicUrl
+                  ? <img src={profile.ProfilePicUrl} alt="" className="w-full h-full object-cover" />
+                  : initials}
               </div>
-              <div className="rounded-xl p-2.5 text-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <p className="text-lg font-extrabold" style={{ color: '#fbbf24' }}>{profile ? Number(profile.AverageRating).toFixed(1) : '—'}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Avg Rating</p>
+              <h3 className="text-sm font-bold text-gray-900 mb-0.5">{profile?.Name || user.Name || '...'}</h3>
+              <p className="text-xs text-gray-400 mb-4">{profile?.RoleName} · {profile?.DeptCode}</p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
+                  <p className="text-lg font-extrabold text-brand-500">{profile?.PVP_Points ?? '—'}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">PVP Points</p>
+                </div>
+                <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
+                  <p className="text-lg font-extrabold text-amber-500">{profile ? Number(profile.AverageRating).toFixed(1) : '—'}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Avg Rating</p>
+                </div>
               </div>
+
+              {profile?.skills?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 justify-center mt-3">
+                  {profile.skills.slice(0, 3).map(s => (
+                    <span key={s.SkillID} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100">
+                      {s.SkillName}
+                    </span>
+                  ))}
+                  {profile.skills.length > 3 && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      +{profile.skills.length - 3} more
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <Link to="/profile" className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold bg-brand-500 text-white hover:bg-brand-600 transition-colors duration-150">
+                <User size={11} />View Full Profile
+              </Link>
             </div>
 
-            {profile?.skills?.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 justify-center mt-3">
-                {profile.skills.slice(0, 3).map(s => (
-                  <span key={s.SkillID} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(242,101,34,0.15)', color: '#f97316', border: '1px solid rgba(242,101,34,0.25)' }}>
-                    {s.SkillName}
-                  </span>
+            {/* Recent Activity */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Recent Activity</h3>
+                <Bell size={13} className="text-gray-300" />
+              </div>
+              <div className="space-y-2">
+                {[
+                  { text: 'Your order #42 has been delivered.', time: '2m ago' },
+                  { text: 'New review posted on your gig.',     time: '1h ago' },
+                  { text: 'You received 50 PVP points.',        time: '3h ago' },
+                ].map((n, i) => (
+                  <div key={i} className="px-3.5 py-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50/40 transition-all duration-150 cursor-pointer">
+                    <p className="text-xs text-gray-600 leading-relaxed">{n.text}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
+                  </div>
                 ))}
-                {profile.skills.length > 3 && (
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>
-                    +{profile.skills.length - 3} more
-                  </span>
-                )}
               </div>
-            )}
-
-            <Link to="/profile" className="mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold transition-colors duration-150"
-              style={{ background: 'rgba(242,101,34,0.12)', color: '#f97316', border: '1px solid rgba(242,101,34,0.25)' }}>
-              <User size={12} />View Full Profile
-            </Link>
-          </div>
-
-          {/* Notifications */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Recent Activity</h3>
-              <Bell size={13} style={{ color: 'rgba(255,255,255,0.25)' }} />
             </div>
-            <div className="space-y-2">
-              {notifications.map(n => (
-                <div key={n.id} className="px-4 py-3 rounded-xl transition-colors duration-150 cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}>
-                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>{n.text}</p>
-                  <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>{n.time}</p>
+
+            {/* Platform Pulse */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Platform Pulse</h3>
+              {[
+                { label: 'Active Gigs',    value: gigs.length },
+                { label: 'Skills Added',   value: profile?.skills?.length ?? 0 },
+                { label: 'Top PVP Score',  value: '1,240' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
+                  <span className="text-xs text-gray-500">{item.label}</span>
+                  <span className="text-xs font-bold text-gray-800">{item.value}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Quick stats */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>Platform Pulse</h3>
-            {[
-              { label: 'Active Gigs', value: gigs.length },
-              { label: 'Skills Tracked', value: profile?.skills?.length ?? 0 },
-              { label: 'Top PVP Score', value: '1,240' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{item.label}</span>
-                <span className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
+        </aside>
+      </div>
     </div>
   );
 }
