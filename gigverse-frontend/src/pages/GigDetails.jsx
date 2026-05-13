@@ -1,8 +1,9 @@
-// src/pages/GigDetails.jsx — Single Gig View + Place Order
+// src/pages/GigDetails.jsx — Single Gig View + Premium Escrow Payment Gateway
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Zap, Star, Clock, ShieldCheck, AlertCircle, CheckCircle2, ArrowLeft, Loader2, MessageSquare, X } from 'lucide-react';
+import { Zap, Star, Clock, ShieldCheck, AlertCircle, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import { gigAPI, orderAPI } from '../lib/api';
+import PaymentGatewayModal from '../components/PaymentGatewayModal';
 
 export default function GigDetails() {
   const { id } = useParams();
@@ -14,6 +15,10 @@ export default function GigDetails() {
   const [orderSuccess, setOrderSuccess] = useState('');
   const [orderError, setOrderError] = useState('');
 
+  // Payment Gateway Modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState(null);
+
   useEffect(() => { fetchGig(); }, [id]);
 
   const fetchGig = async () => {
@@ -23,25 +28,29 @@ export default function GigDetails() {
     finally { setLoading(false); }
   };
 
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('bKash');
-  const [senderAccount, setSenderAccount] = useState('');
-  const [trxID, setTrxID] = useState('');
-
-  const handlePlaceOrder = async () => {
+  // Step 1: Create the order, then open payment modal
+  const handleCheckout = async () => {
     if (!localStorage.getItem('gv_token')) { navigate('/auth'); return; }
     const user = JSON.parse(localStorage.getItem('gv_user') || '{}');
     if (!user.UserID) { navigate('/auth'); return; }
 
-    if (!senderAccount || !trxID) { setOrderError('Please provide Sender Account and TrxID.'); return; }
-
     setOrdering(true); setOrderError(''); setOrderSuccess('');
     try {
-      await orderAPI.create({ clientId: user.UserID, gigId: Number(id) });
-      setOrderSuccess(`Order Placed Successfully. Payment is in Escrow verification.`);
-      setShowCheckoutModal(false);
-    } catch (err) { setOrderError(err.response?.data?.message || 'Failed to place order.'); }
-    finally { setOrdering(false); }
+      const res = await orderAPI.create({ clientId: user.UserID, gigId: Number(id) });
+      const newOrderId = res.data?.data?.orderId;
+      setCreatedOrderId(newOrderId);
+      setShowPaymentModal(true);
+    } catch (err) {
+      setOrderError(err.response?.data?.message || 'Failed to create order.');
+    } finally {
+      setOrdering(false);
+    }
+  };
+
+  // Step 2: Payment completed successfully
+  const handlePaymentSuccess = () => {
+    setOrderSuccess('Order placed successfully! Payment is held in secure escrow.');
+    setShowPaymentModal(false);
   };
 
   if (loading) return (<div className="min-h-[70vh] flex items-center justify-center"><Loader2 size={36} className="text-brand-500 animate-spin" /></div>);
@@ -100,8 +109,19 @@ export default function GigDetails() {
                 {orderSuccess && (<div className="mb-4 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2"><CheckCircle2 size={16} className="shrink-0" />{orderSuccess}</div>)}
                 {orderError && (<div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2"><AlertCircle size={16} className="shrink-0" />{orderError}</div>)}
 
-                <button id="place-order-btn" onClick={() => setShowCheckoutModal(true)} disabled={ordering || !!orderSuccess} className="btn-primary w-full !py-3.5 text-sm disabled:opacity-60 disabled:cursor-not-allowed mb-4">
-                  {ordering ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing…</span> : orderSuccess ? <span className="flex items-center gap-2"><CheckCircle2 size={15} /> Order Placed</span> : <span className="flex items-center gap-2"><ShieldCheck size={15} /> Continue to Checkout</span>}
+                <button
+                  id="place-order-btn"
+                  onClick={handleCheckout}
+                  disabled={ordering || !!orderSuccess}
+                  className="btn-primary w-full !py-3.5 text-sm disabled:opacity-60 disabled:cursor-not-allowed mb-4"
+                >
+                  {ordering ? (
+                    <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating Order…</span>
+                  ) : orderSuccess ? (
+                    <span className="flex items-center gap-2"><CheckCircle2 size={15} /> Order Placed</span>
+                  ) : (
+                    <span className="flex items-center gap-2"><ShieldCheck size={15} /> Continue to Checkout</span>
+                  )}
                 </button>
 
                 <button
@@ -133,54 +153,17 @@ export default function GigDetails() {
         </div>
       </main>
 
-      {showCheckoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><ShieldCheck className="text-brand-500" size={20} /> Secure Escrow Checkout</h2>
-              <button onClick={() => setShowCheckoutModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-
-            <div className="p-5 flex-1 overflow-y-auto">
-              <h3 className="text-sm font-bold text-gray-800 mb-3">1. Select Payment Method</h3>
-              <div className="flex gap-3 mb-5">
-                <button onClick={() => setPaymentMethod('bKash')} className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${paymentMethod === 'bKash' ? 'border-[#e2136e] text-[#e2136e] bg-[#e2136e]/5' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>bKash</button>
-                <button onClick={() => setPaymentMethod('Nagad')} className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${paymentMethod === 'Nagad' ? 'border-[#ed1c24] text-[#ed1c24] bg-[#ed1c24]/5' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>Nagad</button>
-                <button onClick={() => setPaymentMethod('Rocket')} className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${paymentMethod === 'Rocket' ? 'border-[#8c1515] text-[#8c1515] bg-[#8c1515]/5' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>Rocket</button>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-5">
-                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Instructions</h4>
-                <ol className="text-xs text-gray-600 space-y-1.5 list-decimal pl-4">
-                  <li>Go to your {paymentMethod} app or Dial {paymentMethod === 'bKash' ? '*247#' : paymentMethod === 'Nagad' ? '*167#' : '*322#'}</li>
-                  <li>Choose 'Send Money'</li>
-                  <li>Enter GigVerse Escrow Number: <span className="font-bold text-brand-600">017XXXXXXXX</span></li>
-                  <li>Enter total amount: <span className="font-bold">&#2547;{Number(gig.BasePrice).toLocaleString()}</span></li>
-                  <li>Copy Transaction ID from the payment confirmation message and paste it below.</li>
-                </ol>
-              </div>
-
-              <h3 className="text-sm font-bold text-gray-800 mb-3">2. Payment Verification</h3>
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Your Account Number (Sender)</label>
-                  <input type="tel" placeholder="e.g. +8801..." value={senderAccount} onChange={e => setSenderAccount(e.target.value)} className="input-field" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Transaction ID (TrxID)</label>
-                  <input type="text" placeholder="e.g. 8A7B6C5D4E" value={trxID} onChange={e => setTrxID(e.target.value)} className="input-field uppercase" />
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 border-t border-gray-100 bg-gray-50">
-              <button onClick={handlePlaceOrder} disabled={!senderAccount || !trxID || ordering} className="btn-primary w-full !py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
-                {ordering ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing…</span> : 'Place Order'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Premium Payment Gateway Modal ── */}
+      <PaymentGatewayModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        order={createdOrderId ? {
+          orderId: createdOrderId,
+          gigTitle: gig.Title,
+          amount: gig.BasePrice,
+        } : null}
+        onSuccess={handlePaymentSuccess}
+      />
     </>
   );
 }

@@ -12,6 +12,8 @@ const orderRoutes     = require('./routes/order.routes');
 const reviewRoutes    = require('./routes/review.routes');
 const gigRoutes       = require('./routes/gig.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const aiRoutes        = require('./routes/ai.routes');
+const paymentRoutes   = require('./routes/payment.routes');
 
 const app = express();
 
@@ -33,6 +35,8 @@ app.use('/api/orders',    orderRoutes);
 app.use('/api/reviews',   reviewRoutes);
 app.use('/api/gigs',      gigRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/ai',        aiRoutes);
+app.use('/api/payments',  paymentRoutes);
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {

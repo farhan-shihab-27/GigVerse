@@ -9,6 +9,7 @@ import {
   ChevronsLeft, ChevronsRight, ShoppingCart
 } from 'lucide-react';
 import { gigAPI, userAPI, searchAPI, orderAPI } from '../lib/api';
+import SmartGigEstimator from '../components/SmartGigEstimator';
 
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',   to: '/home' },
@@ -290,6 +291,9 @@ export default function WorkspaceHome() {
               </div>
             )}
           </section>
+
+          {/* ── AI Smart Pricing Estimator ── */}
+          <SmartGigEstimator />
 
           {/* ── Gig Discovery ── */}
           <section>

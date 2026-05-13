@@ -80,4 +80,14 @@ export const searchAPI = {
   skills:       ()      => api.get('/search/skills'),
 };
 
+// ── AI Smart Pricing ──────────────────────────────────────────────────────────
+export const aiAPI = {
+  estimateGig: (prompt) => api.post('/ai/estimate', { prompt }),
+};
+
+// ── Payments ──────────────────────────────────────────────────────────────────
+export const paymentAPI = {
+  processEscrow: (data) => api.post('/payments/escrow', data),
+};
+
 export default api;
