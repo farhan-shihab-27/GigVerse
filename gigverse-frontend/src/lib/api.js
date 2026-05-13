@@ -43,7 +43,9 @@ export const userAPI = {
   getLeaderboard:   (limit = 100) => api.get(`/users/leaderboard?limit=${limit}`),
   getProfileStatus: () => api.get('/users/profile/status'),
   completeProfile:  (data) => api.post('/users/profile/complete', data),
+  deleteAccount:    (data) => api.delete('/users/account', { data }),
 };
+
 
 // Gigs 
 export const gigAPI = {

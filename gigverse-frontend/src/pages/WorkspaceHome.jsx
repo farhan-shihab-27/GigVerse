@@ -1,11 +1,12 @@
-// src/pages/WorkspaceHome.jsx — Light-Theme 3-Column Workspace
+// src/pages/WorkspaceHome.jsx — Collapsible sidebar, grouped search, draggable right panel
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Briefcase, MessageSquare,
   Trophy, Wallet, Search, Bell, Star, Zap, LogOut, Award,
   User, TrendingUp, Loader2, ImageOff, ChevronRight, Tag,
-  X, GripVertical, ShieldCheck, ArrowUpRight
+  X, GripVertical, ShieldCheck, ArrowUpRight,
+  ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { gigAPI, userAPI, searchAPI } from '../lib/api';
 
@@ -33,20 +34,19 @@ export default function WorkspaceHome() {
   const [gigsLoading, setGigsLoading]   = useState(true);
   const [activeCategory, setActiveCat]  = useState('All');
   const [query, setQuery]               = useState('');
-  const [suggestions, setSuggestions]   = useState([]);
+  const [suggestions, setSuggestions]   = useState({ skills: [], users: [] });
   const [sugLoading, setSugLoading]     = useState(false);
   const [showSug, setShowSug]           = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(288);
+  const [collapsed, setCollapsed]       = useState(false);
 
-  // Draggable resize state
   const isDragging = useRef(false);
   const startX     = useRef(0);
   const startW     = useRef(0);
+  const debQuery   = useDebounce(query, 300);
 
-  const debQuery = useDebounce(query, 300);
-  const user     = (() => { try { return JSON.parse(localStorage.getItem('gv_user')) || {}; } catch { return {}; } })();
-  const initials = (user.Name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-
+  const user      = (() => { try { return JSON.parse(localStorage.getItem('gv_user')) || {}; } catch { return {}; } })();
+  const initials  = (user.Name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const firstName = (profile?.Name || user.Name || '').split(' ')[0] || 'there';
 
   useEffect(() => { userAPI.getMyProfile().then(r => setProfile(r.data.data)).catch(() => {}); }, []);
@@ -56,21 +56,20 @@ export default function WorkspaceHome() {
   }, []);
 
   useEffect(() => {
-    if (debQuery.length < 2) { setSuggestions([]); return; }
+    if (debQuery.length < 2) { setSuggestions({ skills: [], users: [] }); return; }
     setSugLoading(true);
     searchAPI.autocomplete(debQuery)
-      .then(r => setSuggestions(r.data.data || []))
-      .catch(() => setSuggestions([]))
+      .then(r => setSuggestions(r.data.data || { skills: [], users: [] }))
+      .catch(() => setSuggestions({ skills: [], users: [] }))
       .finally(() => setSugLoading(false));
   }, [debQuery]);
 
-  // Drag handlers
+  // ── Draggable sidebar ──────────────────────────────────────────────────────
   const onDragStart = useCallback((e) => {
     isDragging.current = true;
     startX.current = e.clientX;
     startW.current = sidebarWidth;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+    document.body.classList.add('is-dragging');          // CSS class fixes cursor globally
     const onMove = (ev) => {
       if (!isDragging.current) return;
       const delta = startX.current - ev.clientX;
@@ -78,8 +77,7 @@ export default function WorkspaceHome() {
     };
     const onUp = () => {
       isDragging.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.classList.remove('is-dragging');
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
@@ -87,9 +85,9 @@ export default function WorkspaceHome() {
     document.addEventListener('mouseup', onUp);
   }, [sidebarWidth]);
 
-  const handleSugClick = (item) => {
+  const handleSugClick = (item, type) => {
     setShowSug(false); setQuery('');
-    if (item.type === 'user') navigate(`/profile/${item.id}`);
+    if (type === 'user') navigate(`/profile/${item.id}`);
     else navigate(`/search?skill=${encodeURIComponent(item.label)}`);
   };
 
@@ -101,57 +99,70 @@ export default function WorkspaceHome() {
   const filteredGigs = activeCategory === 'All' ? gigs
     : gigs.filter(g => g.CategoryName === activeCategory || g.DeptName?.includes(activeCategory));
 
-  const skillCount = profile?.skills?.length ?? 0;
-  const profilePct = Math.min(100, [
-    !!profile?.Name, !!profile?.Bio && profile.Bio !== 'New member of GigVerse',
-    !!profile?.ProfilePicUrl, skillCount >= 3,
+  const skillCount  = profile?.skills?.length ?? 0;
+  const profilePct  = Math.min(100, [
+    !!profile?.Name,
+    !!profile?.Bio && profile.Bio !== 'New member of GigVerse',
+    !!profile?.ProfilePicUrl,
+    skillCount >= 3,
   ].filter(Boolean).length * 25);
 
-  // Quick-stat cards data
   const QUICK_STATS = [
-    { icon: ClipboardList, label: 'Active Orders',      value: '—',        color: '#3b82f6', bg: '#eff6ff' },
+    { icon: ClipboardList, label: 'Active Orders',      value: '—',       color: '#3b82f6', bg: '#eff6ff' },
     { icon: Zap,           label: 'Available PVP',      value: profile?.PVP_Points ?? '—', color: '#f26522', bg: '#fff4eb' },
     { icon: Star,          label: 'Avg. Rating',        value: profile ? Number(profile.AverageRating).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb' },
     { icon: ShieldCheck,   label: 'Profile Completion', value: `${profilePct}%`, color: '#10b981', bg: '#f0fdf4' },
   ];
 
+  const hasSuggestions = suggestions.skills.length > 0 || suggestions.users.length > 0;
+
   return (
-    /* Root: fills the space BELOW the sticky Navbar (h-16 = 4rem) */
     <div className="flex bg-gray-50 bg-dora-kata" style={{ height: 'calc(100vh - 4rem)' }}>
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
-      <aside className="w-56 flex flex-col shrink-0 bg-white border-r border-gray-100 shadow-sm">
+      <aside
+        className="flex flex-col shrink-0 bg-white border-r border-gray-100 shadow-sm transition-all duration-300 overflow-hidden"
+        style={{ width: collapsed ? '56px' : '224px' }}>
+
         {/* Nav */}
-        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-          <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Main Menu</p>
+        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden">
+          {!collapsed && <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Main Menu</p>}
           {NAV.map(({ icon: Icon, label, to }) => {
             const active = window.location.pathname === to && label === 'Dashboard';
             return (
-              <Link key={label} to={to}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative group
+              <Link key={label} to={to} title={collapsed ? label : undefined}
+                className={`flex items-center rounded-xl text-sm font-medium transition-all duration-150 relative group overflow-hidden
+                  ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'}
                   ${active ? 'bg-brand-50 text-brand-600' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>
-                {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-500 rounded-full" />}
-                <Icon size={15} className="shrink-0" />
-                <span>{label}</span>
-                <ChevronRight size={11} className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity" />
+                {active && !collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-500 rounded-full" />}
+                <Icon size={16} className="shrink-0" />
+                {!collapsed && <span className="whitespace-nowrap">{label}</span>}
+                {!collapsed && <ChevronRight size={11} className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity" />}
               </Link>
             );
           })}
         </nav>
 
-        {/* Sidebar footer */}
-        <div className="px-3 py-3 border-t border-gray-100">
-          <button onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-600 hover:bg-red-50 transition-all duration-150">
-            <LogOut size={15} /><span>Sign Out</span>
+        {/* Collapse toggle + Logout */}
+        <div className="px-2 py-3 border-t border-gray-100 space-y-1">
+          {!collapsed && (
+            <button onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-600 hover:bg-red-50 transition-all duration-150">
+              <LogOut size={15} /><span className="whitespace-nowrap">Sign Out</span>
+            </button>
+          )}
+          <button onClick={() => setCollapsed(c => !c)} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className={`flex items-center w-full rounded-xl text-xs font-semibold text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-all duration-150 py-2.5
+              ${collapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}>
+            {collapsed ? <ChevronsRight size={16} /> : <><ChevronsLeft size={15} /><span>Collapse</span></>}
           </button>
         </div>
       </aside>
 
       {/* ── CENTER FEED ──────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-        {/* Search bar row */}
+        {/* Search row */}
         <div className="px-6 py-3 bg-white border-b border-gray-100 shrink-0">
           <div className="relative max-w-2xl mx-auto">
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 hover:border-brand-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 transition-all duration-200">
@@ -163,30 +174,67 @@ export default function WorkspaceHome() {
                 placeholder='Search gigs, skills, contributors...'
                 className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
               />
-              {query && <button onClick={() => { setQuery(''); setSuggestions([]); }} className="text-gray-300 hover:text-gray-500"><X size={13} /></button>}
+              {query && <button onClick={() => { setQuery(''); setSuggestions({ skills: [], users: [] }); }} className="text-gray-300 hover:text-gray-500"><X size={13} /></button>}
               {sugLoading && <Loader2 size={13} className="animate-spin text-brand-500" />}
             </div>
 
-            {/* Suggestions dropdown */}
+            {/* ── Grouped suggestions dropdown ── */}
             {showSug && query.length >= 2 && (
-              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50 bg-white border border-gray-200 shadow-xl shadow-gray-200/60 animate-slide-up">
-                {suggestions.length === 0 && !sugLoading
-                  ? <div className="px-5 py-4 text-sm text-gray-400">No results for "{query}"</div>
-                  : suggestions.map((item, i) => (
-                    <button key={i} onMouseDown={() => handleSugClick(item)}
-                      className="flex items-center gap-3 w-full px-5 py-3 text-left hover:bg-brand-50 transition-colors duration-100"
-                      style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${item.type === 'user' ? 'bg-brand-50' : 'bg-gray-100'}`}>
-                        {item.type === 'user' ? <User size={13} className="text-brand-500" /> : <Tag size={13} className="text-gray-400" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">{item.label}</p>
-                        <p className="text-xs text-gray-400">{item.sub} · {item.type === 'user' ? 'Contributor' : 'Skill'}</p>
-                      </div>
-                      <ArrowUpRight size={13} className="ml-auto text-gray-300" />
-                    </button>
-                  ))
-                }
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50 bg-white border border-gray-200 shadow-xl animate-slide-up">
+                {!hasSuggestions && !sugLoading && (
+                  <div className="px-5 py-4 text-sm text-gray-400">No results for "{query}"</div>
+                )}
+
+                {/* Skills group */}
+                {suggestions.skills.length > 0 && (
+                  <div>
+                    <div className="px-5 py-2 border-b border-gray-100">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Suggested Skills</p>
+                    </div>
+                    {suggestions.skills.map((item, i) => (
+                      <button key={`sk-${i}`} onMouseDown={() => handleSugClick(item, 'skill')}
+                        className="flex items-center gap-3 w-full px-5 py-2.5 text-left hover:bg-brand-50 transition-colors duration-100"
+                        style={{ borderBottom: '1px solid #f9fafb' }}>
+                        <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                          <Tag size={12} className="text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                          <p className="text-xs text-gray-400">{item.sub}</p>
+                        </div>
+                        <ArrowUpRight size={12} className="ml-auto text-gray-300" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Contributors group */}
+                {suggestions.users.length > 0 && (
+                  <div>
+                    <div className="px-5 py-2 border-b border-gray-100 border-t">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Suggested Contributors</p>
+                    </div>
+                    {suggestions.users.map((item, i) => {
+                      const ui = (item.label || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+                      return (
+                        <button key={`us-${i}`} onMouseDown={() => handleSugClick(item, 'user')}
+                          className="flex items-center gap-3 w-full px-5 py-2.5 text-left hover:bg-brand-50 transition-colors duration-100"
+                          style={{ borderBottom: i < suggestions.users.length - 1 ? '1px solid #f9fafb' : 'none' }}>
+                          <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-brand-gradient flex items-center justify-center text-white text-[10px] font-bold">
+                            {item.avatar
+                              ? <img src={item.avatar} alt="" className="w-full h-full object-cover" />
+                              : ui}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                            <p className="text-xs text-gray-400">{item.sub} · {item.PVP_Points} PVP</p>
+                          </div>
+                          <ArrowUpRight size={12} className="ml-auto text-gray-300" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -203,24 +251,20 @@ export default function WorkspaceHome() {
               </h1>
               <p className="text-sm text-gray-400 mt-0.5">Here is your workspace overview for today.</p>
             </div>
-
-            {/* Quick stats */}
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
               {QUICK_STATS.map(({ icon: Icon, label, value, color, bg }) => (
                 <div key={label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
                       <Icon size={16} style={{ color }} />
                     </div>
-                    <ArrowUpRight size={13} className="text-gray-300" />
+                    <ArrowUpRight size={13} className="text-gray-200" />
                   </div>
                   <p className="text-2xl font-extrabold text-gray-900">{value}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
-
-            {/* Profile completion bar */}
             {profilePct < 100 && (
               <div className="bg-white rounded-2xl border border-brand-100 p-4 shadow-sm flex items-center gap-4">
                 <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
@@ -232,13 +276,10 @@ export default function WorkspaceHome() {
                     <span className="text-xs font-bold text-brand-500">{profilePct}%</span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-brand-500 to-orange-400 rounded-full transition-all duration-500"
-                      style={{ width: `${profilePct}%` }} />
+                    <div className="h-full bg-gradient-to-r from-brand-500 to-orange-400 rounded-full transition-all duration-500" style={{ width: `${profilePct}%` }} />
                   </div>
                 </div>
-                <Link to="/profile" className="shrink-0 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">
-                  Complete
-                </Link>
+                <Link to="/profile" className="shrink-0 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">Complete</Link>
               </div>
             )}
           </section>
@@ -250,25 +291,20 @@ export default function WorkspaceHome() {
                 <h2 className="text-base font-extrabold text-gray-900">Featured Services</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Top gigs from verified UIU contributors</p>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-500">
-                <TrendingUp size={13} />Trending
-              </div>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-500"><TrendingUp size={13} />Trending</div>
             </div>
-
-            {/* Category chips */}
             <div className="flex gap-2 mb-5 flex-wrap">
               {CATEGORIES.map(cat => (
                 <button key={cat} onClick={() => setActiveCat(cat)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 border
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150
                     ${activeCategory === cat
-                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm shadow-brand-200'
+                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
                       : 'bg-white text-gray-500 border-gray-200 hover:border-brand-300 hover:text-brand-500'}`}>
                   {cat}
                 </button>
               ))}
             </div>
 
-            {/* Gigs grid */}
             {gigsLoading && (
               <div className="flex items-center justify-center py-16">
                 <Loader2 size={24} className="animate-spin text-brand-500" />
@@ -283,11 +319,10 @@ export default function WorkspaceHome() {
                     <p className="text-sm text-gray-400">No gigs in this category yet.</p>
                   </div>
                 ) : filteredGigs.map(gig => {
-                  const gi = (gig.ContributorName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  const gi = (gig.ContributorName || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
                   return (
                     <Link to={`/profile/${gig.ContributorID}`} key={gig.GigID}
-                      className="card hover:-translate-y-1 hover:shadow-brand hover:border-t-brand-600 group block transition-all duration-200 overflow-hidden">
-                      {/* Image */}
+                      className="card hover:-translate-y-1 hover:shadow-brand hover:border-brand-100 group block transition-all duration-200 overflow-hidden">
                       {gig.PrimaryImage ? (
                         <div className="w-full h-36 overflow-hidden">
                           <img src={gig.PrimaryImage} alt={gig.Title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -333,29 +368,20 @@ export default function WorkspaceHome() {
 
       {/* ── DRAG HANDLE + RIGHT SIDEBAR ──────────────────────────────────── */}
       <div className="flex shrink-0" style={{ width: sidebarWidth }}>
-        {/* Drag handle */}
         <div
-          className="w-3 flex items-center justify-center cursor-col-resize group shrink-0 border-l border-gray-100 hover:border-brand-200 transition-colors duration-150 bg-white"
-          onMouseDown={onDragStart}
-          title="Drag to resize">
-          <GripVertical size={12} className="text-gray-300 group-hover:text-brand-400 transition-colors duration-150" />
+          className="w-3 flex items-center justify-center cursor-col-resize group shrink-0 border-l border-gray-100 hover:border-brand-300 transition-colors bg-white select-none"
+          onMouseDown={onDragStart}>
+          <GripVertical size={12} className="text-gray-300 group-hover:text-brand-400 transition-colors" />
         </div>
-
-        {/* Right sidebar content */}
         <aside className="flex-1 overflow-y-auto bg-white border-l border-gray-100" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}>
           <div className="p-4 space-y-5">
-
             {/* Mini Profile Card */}
             <div className="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 to-orange-50/30 p-5 text-center">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-extrabold mx-auto mb-3 overflow-hidden shadow-brand"
-                style={{ background: 'linear-gradient(135deg, #f26522, #d95315)' }}>
-                {profile?.ProfilePicUrl
-                  ? <img src={profile.ProfilePicUrl} alt="" className="w-full h-full object-cover" />
-                  : initials}
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-extrabold mx-auto mb-3 overflow-hidden shadow-brand bg-brand-gradient">
+                {profile?.ProfilePicUrl ? <img src={profile.ProfilePicUrl} alt="" className="w-full h-full object-cover" /> : initials}
               </div>
               <h3 className="text-sm font-bold text-gray-900 mb-0.5">{profile?.Name || user.Name || '...'}</h3>
               <p className="text-xs text-gray-400 mb-4">{profile?.RoleName} · {profile?.DeptCode}</p>
-
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
                   <p className="text-lg font-extrabold text-brand-500">{profile?.PVP_Points ?? '—'}</p>
@@ -366,23 +392,17 @@ export default function WorkspaceHome() {
                   <p className="text-[10px] text-gray-400 mt-0.5">Avg Rating</p>
                 </div>
               </div>
-
               {profile?.skills?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 justify-center mt-3">
                   {profile.skills.slice(0, 3).map(s => (
-                    <span key={s.SkillID} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100">
-                      {s.SkillName}
-                    </span>
+                    <span key={s.SkillID} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100">{s.SkillName}</span>
                   ))}
                   {profile.skills.length > 3 && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                      +{profile.skills.length - 3} more
-                    </span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">+{profile.skills.length - 3} more</span>
                   )}
                 </div>
               )}
-
-              <Link to="/profile" className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold bg-brand-500 text-white hover:bg-brand-600 transition-colors duration-150">
+              <Link to="/profile" className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold bg-brand-500 text-white hover:bg-brand-600 transition-colors">
                 <User size={11} />View Full Profile
               </Link>
             </div>
@@ -399,7 +419,7 @@ export default function WorkspaceHome() {
                   { text: 'New review posted on your gig.',     time: '1h ago' },
                   { text: 'You received 50 PVP points.',        time: '3h ago' },
                 ].map((n, i) => (
-                  <div key={i} className="px-3.5 py-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50/40 transition-all duration-150 cursor-pointer">
+                  <div key={i} className="px-3.5 py-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50/40 transition-all cursor-pointer">
                     <p className="text-xs text-gray-600 leading-relaxed">{n.text}</p>
                     <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
                   </div>
@@ -411,9 +431,9 @@ export default function WorkspaceHome() {
             <div>
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Platform Pulse</h3>
               {[
-                { label: 'Active Gigs',    value: gigs.length },
-                { label: 'Skills Added',   value: profile?.skills?.length ?? 0 },
-                { label: 'Top PVP Score',  value: '1,240' },
+                { label: 'Active Gigs',   value: gigs.length },
+                { label: 'Skills Added',  value: profile?.skills?.length ?? 0 },
+                { label: 'Top PVP Score', value: '1,240' },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
                   <span className="text-xs text-gray-500">{item.label}</span>

@@ -137,3 +137,11 @@
 .react-datepicker__year-select {
   @apply text-sm font-semibold text-gray-700 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-brand-400;
 }
+
+/* ─── Sidebar drag cursor fix ────────────────────────────────────────────── */
+/* Ensures the resize cursor stays dark and visible on light backgrounds      */
+.is-dragging,
+.is-dragging * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}

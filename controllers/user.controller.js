@@ -1,5 +1,6 @@
 //  User / Profile Controller 
-const pool = require('../database/db');
+const pool   = require('../database/db');
+const bcrypt = require('bcryptjs');
 
 // Fetch public profile data
 
@@ -500,4 +501,45 @@ exports.completeProfile = async (req, res, next) => {
   } finally {
     conn.release();
   }
+};
+
+// ── DELETE /api/users/account ─────────────────────────────────────────────────
+// Soft-delete: timestamps UiuEmail + PersonalEmail + WhatsAppNumber so the real
+// addresses are freed from UNIQUE constraints instantly — no hard data wipe.
+exports.deleteAccount = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ success: false, message: 'Password is required.' });
+
+    // 1. Verify password
+    const [[user]] = await pool.query(
+      'SELECT PasswordHash FROM Users WHERE UserID = ?', [userId]
+    );
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
+    const valid = await bcrypt.compare(password, user.PasswordHash);
+    if (!valid) return res.status(401).json({ success: false, message: 'Incorrect password. Please try again.' });
+
+    const ts = Math.floor(Date.now() / 1000); // Unix timestamp
+
+    // 2. Pseudo-archive: append _deleted_<ts> to unique identity fields
+    await pool.query(
+      `UPDATE Users SET
+         UiuEmail      = CONCAT(UiuEmail, '_deleted_', ?),
+         PersonalEmail = CONCAT(PersonalEmail, '_deleted_', ?)
+       WHERE UserID = ?`,
+      [ts, ts, userId]
+    );
+
+    // 3. Free WhatsApp number (may also be used for re-signup)
+    await pool.query(
+      `UPDATE User_Private_Info SET
+         WhatsAppNumber = CONCAT(IFNULL(WhatsAppNumber, ''), '_deleted_', ?)
+       WHERE UserID = ?`,
+      [ts, userId]
+    );
+
+    return res.json({ success: true, message: 'Your account has been deactivated. All personal data has been anonymised.' });
+  } catch (err) { next(err); }
 };
