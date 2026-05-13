@@ -1,5 +1,5 @@
 // src/pages/Profile.jsx — User Profile Dashboard
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Phone, CreditCard, Award, Star, Edit3, Save, X, Zap, Calendar, FileText, Shield, CheckCircle2, AlertCircle, Loader2, ClipboardList, Trash2 } from 'lucide-react';
 import { userAPI } from '../lib/api';
@@ -17,18 +17,37 @@ export default function Profile() {
   const [showDelete, setShowDelete] = useState(false);
 
 
-  useEffect(() => { fetchProfile(); }, []);
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
-  const fetchProfile = async () => {
+  // Define before useEffect to avoid hoisting issues
+  const fetchProfile = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await userAPI.getMyProfile();
-      const data = res.data.data;
+      const res  = await userAPI.getMyProfile();
+      // Backend shape: { success, data: { UserID, Name, UiuEmail, PersonalEmail,
+      //   DOB, ProfilePicUrl, Bio, PVP_Points, AverageRating, CreatedAt,
+      //   RoleName, DeptName, DeptCode, WhatsAppNumber, BkashNumber,
+      //   BankAccountDetails, skills: [...] } }
+      const data = res.data?.data;
+      if (!data) throw new Error('Empty profile response.');
       setProfile(data);
-      setForm({ name: data.Name || '', bio: data.Bio || '', dob: data.DOB ? data.DOB.split('T')[0] : '', whatsAppNumber: data.WhatsAppNumber || '', bkashNumber: data.BkashNumber || '', bankAccountDetails: data.BankAccountDetails || '' });
-    } catch (err) { if (err.response?.status === 401) { navigate('/auth', { replace: true }); return; } setError('Failed to load profile.'); }
-    finally { setLoading(false); }
-  };
+      setForm({
+        name:               data.Name              || '',
+        bio:                data.Bio               || '',
+        dob:                data.DOB ? data.DOB.split('T')[0] : '',
+        whatsAppNumber:     data.WhatsAppNumber    || '',
+        bkashNumber:        data.BkashNumber       || '',
+        bankAccountDetails: data.BankAccountDetails || '',
+      });
+    } catch (err) {
+      if (err.response?.status === 401) {
+        navigate('/auth', { replace: true }); return;
+      }
+      setError(err.response?.data?.message || err.message || 'Failed to load profile.');
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
 
   const handleSave = async (e) => {
     e.preventDefault(); setSaving(true); setError(''); setSuccessMsg('');
