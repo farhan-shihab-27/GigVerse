@@ -1,7 +1,14 @@
 // src/lib/api.js — Centralized Axios instance for GigVerse API
+// Dynamically switches between localhost (dev proxy) and production URL (Vercel).
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// In development, Vite proxies /api → http://localhost:5000 (see vite.config.js).
+// In production (Vercel), set VITE_API_BASE_URL to the full backend URL, e.g.
+// https://gigverse-api.vercel.app/api
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||   // production — full URL
+  import.meta.env.VITE_API_URL      ||   // legacy env var compat
+  '/api';                                  // dev — uses Vite proxy
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -9,7 +16,7 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// ── JWT interceptor: attach token to every request ────────────────────────────
+// ── Request interceptor: attach JWT to every request ──────────────────────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('gv_token');
@@ -19,21 +26,19 @@ api.interceptors.request.use(
   (err) => Promise.reject(err)
 );
 
-// ── Response interceptor: ONLY redirect on genuine 401 (invalid/expired token)
-// Do NOT wipe the session on network errors or other server errors.
+// ── Response interceptor: only 401 from server = expired/invalid token ────────
+// Network errors, CORS failures, and timeouts must NOT wipe the session.
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    // Only auto-logout when server explicitly rejects the token (401)
-    // AND the error comes with a response (not a network timeout/offline error)
-    if (err.response?.status === 401) {
-      const pathname = window.location.pathname;
-      // Don't redirect if already on the auth page to avoid loops
-      if (pathname !== '/auth') {
-        localStorage.removeItem('gv_token');
-        localStorage.removeItem('gv_user');
-        window.location.href = '/auth';
-      }
+    if (
+      err.response &&                         // server actually responded
+      err.response.status === 401 &&          // token rejected
+      window.location.pathname !== '/auth'    // avoid redirect loops
+    ) {
+      localStorage.removeItem('gv_token');
+      localStorage.removeItem('gv_user');
+      window.location.href = '/auth';
     }
     return Promise.reject(err);
   }
@@ -49,27 +54,26 @@ export const authAPI = {
 
 // ── User / Profile ────────────────────────────────────────────────────────────
 export const userAPI = {
-  getMyProfile:     ()     => api.get('/users/profile'),
-  updateMyProfile:  (data) => api.put('/users/profile', data),
-  getLeaderboard:   (limit = 100) => api.get(`/users/leaderboard?limit=${limit}`),
-  getProfileStatus: ()     => api.get('/users/profile/status'),
-  completeProfile:  (data) => api.post('/users/profile/complete', data),
-  // Axios DELETE with a JSON body requires { data: payload } in the config object
+  getMyProfile:     ()        => api.get('/users/profile'),
+  updateMyProfile:  (data)    => api.put('/users/profile', data),
+  getLeaderboard:   (limit=100)=> api.get(`/users/leaderboard?limit=${limit}`),
+  getProfileStatus: ()        => api.get('/users/profile/status'),
+  completeProfile:  (data)    => api.post('/users/profile/complete', data),
   deleteAccount:    (payload) => api.delete('/users/account', { data: payload }),
 };
 
 // ── Gigs ──────────────────────────────────────────────────────────────────────
 export const gigAPI = {
-  getAll:  (limit = 20, offset = 0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
-  getById: (id)                      => api.get(`/gigs/${id}`),
+  getAll:  (limit=20, offset=0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
+  getById: (id)                  => api.get(`/gigs/${id}`),
 };
 
 // ── Orders ────────────────────────────────────────────────────────────────────
 export const orderAPI = {
-  create:               (data)   => api.post('/orders', data),
-  getMyOrders:          ()       => api.get('/orders/my'),
-  getById:              (id)     => api.get(`/orders/${id}`),
-  getContributorContact:(userId) => api.get(`/orders/contact/${userId}`),
+  create:                (data)   => api.post('/orders', data),
+  getMyOrders:           ()       => api.get('/orders/my'),
+  getById:               (id)     => api.get(`/orders/${id}`),
+  getContributorContact: (userId) => api.get(`/orders/contact/${userId}`),
 };
 
 // ── Search ────────────────────────────────────────────────────────────────────

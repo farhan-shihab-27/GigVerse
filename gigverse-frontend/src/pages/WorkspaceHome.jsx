@@ -6,9 +6,9 @@ import {
   Trophy, Wallet, Search, Bell, Star, Zap, LogOut, Award,
   User, TrendingUp, Loader2, ImageOff, ChevronRight, Tag,
   X, GripVertical, ShieldCheck, ArrowUpRight,
-  ChevronsLeft, ChevronsRight
+  ChevronsLeft, ChevronsRight, ShoppingCart
 } from 'lucide-react';
-import { gigAPI, userAPI, searchAPI } from '../lib/api';
+import { gigAPI, userAPI, searchAPI, orderAPI } from '../lib/api';
 
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',   to: '/home' },
@@ -49,10 +49,17 @@ export default function WorkspaceHome() {
   const initials  = (user.Name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const firstName = (profile?.Name || user.Name || '').split(' ')[0] || 'there';
 
-  useEffect(() => { userAPI.getMyProfile().then(r => setProfile(r.data.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    userAPI.getMyProfile()
+      .then(r => { if (r?.data?.data) setProfile(r.data.data); })
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     setGigsLoading(true);
-    gigAPI.getAll(12).then(r => setGigs(r.data.data || [])).catch(() => {}).finally(() => setGigsLoading(false));
+    gigAPI.getAll(12)
+      .then(r => setGigs(Array.isArray(r?.data?.data) ? r.data.data : []))
+      .catch(() => setGigs([]))
+      .finally(() => setGigsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -110,7 +117,7 @@ export default function WorkspaceHome() {
   const QUICK_STATS = [
     { icon: ClipboardList, label: 'Active Orders',      value: '—',       color: '#3b82f6', bg: '#eff6ff' },
     { icon: Zap,           label: 'Available PVP',      value: profile?.PVP_Points ?? '—', color: '#f26522', bg: '#fff4eb' },
-    { icon: Star,          label: 'Avg. Rating',        value: profile ? Number(profile.AverageRating).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb' },
+    { icon: Star,          label: 'Avg. Rating',        value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb' },
     { icon: ShieldCheck,   label: 'Profile Completion', value: `${profilePct}%`, color: '#10b981', bg: '#f0fdf4' },
   ];
 
@@ -321,7 +328,7 @@ export default function WorkspaceHome() {
                 ) : filteredGigs.map(gig => {
                   const gi = (gig.ContributorName || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
                   return (
-                    <Link to={`/profile/${gig.ContributorID}`} key={gig.GigID}
+                    <div key={gig.GigID}
                       className="card hover:-translate-y-1 hover:shadow-brand hover:border-brand-100 group block transition-all duration-200 overflow-hidden">
                       {gig.PrimaryImage ? (
                         <div className="w-full h-36 overflow-hidden">
@@ -338,14 +345,15 @@ export default function WorkspaceHome() {
                         </span>
                         <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug">{gig.Title}</h3>
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-brand-gradient overflow-hidden">
+                          <Link to={`/profile/${gig.ContributorID}`}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-brand-gradient overflow-hidden hover:ring-2 hover:ring-brand-200 transition-all">
                             {gig.ProfilePicUrl ? <img src={gig.ProfilePicUrl} alt="" className="w-full h-full object-cover" /> : gi}
+                          </Link>
+                          <div className="min-w-0">
+                            <Link to={`/profile/${gig.ContributorID}`} className="text-xs font-medium text-gray-700 hover:text-brand-600 transition-colors truncate block">{gig.ContributorName}</Link>
+                            <p className="text-[10px] font-semibold text-brand-500">{gig.PVP_Points ?? 0} PVP</p>
                           </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-700">{gig.ContributorName}</p>
-                            <p className="text-[10px] font-semibold text-brand-500">{gig.PVP_Points} PVP</p>
-                          </div>
-                          {gig.AverageRating > 0 && (
+                          {Number(gig.AverageRating || 0) > 0 && (
                             <div className="ml-auto flex items-center gap-1">
                               <Star size={11} className="fill-amber-400 text-amber-400" />
                               <span className="text-xs font-semibold text-gray-600">{Number(gig.AverageRating).toFixed(1)}</span>
@@ -353,11 +361,17 @@ export default function WorkspaceHome() {
                           )}
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <span className="text-[10px] text-gray-400">Starting at</span>
-                          <span className="text-sm font-extrabold text-brand-600">&#2547;{Number(gig.BasePrice).toLocaleString()}</span>
+                          <div>
+                            <span className="text-[10px] text-gray-400">Starting at</span>
+                            <p className="text-sm font-extrabold text-brand-600">&#2547;{Number(gig.BasePrice || 0).toLocaleString()}</p>
+                          </div>
+                          <button onClick={() => navigate(`/gigs/${gig.GigID}`)}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 shadow-sm hover:shadow-brand transition-all duration-200">
+                            <ShoppingCart size={12} />Order Now
+                          </button>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
