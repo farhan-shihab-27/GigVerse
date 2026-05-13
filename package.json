@@ -27,8 +27,6 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.12.0",
-    "nodemailer": "^8.0.7",
-    "react-datepicker": "^9.1.0",
-    "react-phone-number-input": "^3.4.16"
+    "nodemailer": "^8.0.7"
   }
 }

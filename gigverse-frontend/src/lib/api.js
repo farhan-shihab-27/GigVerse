@@ -1,14 +1,11 @@
 // src/lib/api.js — Centralized Axios instance for GigVerse API
-// Dynamically switches between localhost (dev proxy) and production URL (Vercel).
+// In development: Vite proxies /api → http://localhost:5000/api (see vite.config.js)
+// In production:  Vercel routes  /api/* → server.js serverless function
+// Result: baseURL is ALWAYS '/api' unless explicitly overridden.
 import axios from 'axios';
 
-// In development, Vite proxies /api → http://localhost:5000 (see vite.config.js).
-// In production (Vercel), set VITE_API_BASE_URL to the full backend URL, e.g.
-// https://gigverse-api.vercel.app/api
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||   // production — full URL
-  import.meta.env.VITE_API_URL      ||   // legacy env var compat
-  '/api';                                  // dev — uses Vite proxy
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 
 const api = axios.create({
   baseURL: API_BASE,

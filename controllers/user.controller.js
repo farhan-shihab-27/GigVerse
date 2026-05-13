@@ -1,6 +1,6 @@
 //  User / Profile Controller 
 const pool   = require('../database/db');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 
 // Fetch public profile data
 

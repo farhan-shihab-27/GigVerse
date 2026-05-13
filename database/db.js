@@ -4,8 +4,10 @@ const path = require('path');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// ca.pem lives alongside package.json in the project root
-const caPath = path.join(process.cwd(), 'ca.pem');
+// ca.pem lives in the project root (alongside server.js and package.json).
+// __dirname is reliable on both local dev and Vercel Serverless Functions.
+// database/ is one level down from root, so we go up one directory.
+const caPath = path.resolve(__dirname, '..', 'ca.pem');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
