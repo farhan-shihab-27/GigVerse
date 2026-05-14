@@ -67,10 +67,15 @@ export const gigAPI = {
 
 // ── Orders ────────────────────────────────────────────────────────────────────
 export const orderAPI = {
-  create:                (data)   => api.post('/orders', data),
-  getMyOrders:           ()       => api.get('/orders/my'),
-  getById:               (id)     => api.get(`/orders/${id}`),
-  getContributorContact: (userId) => api.get(`/orders/contact/${userId}`),
+  create:              (data)       => api.post('/orders', data),
+  getMyOrders:         ()           => api.get('/orders/my'),
+  getById:             (id)         => api.get(`/orders/${id}`),
+  getContributorContact: (userId)   => api.get(`/orders/contact/${userId}`),
+  acceptOrder:         (id)         => api.patch(`/orders/${id}/accept`),
+  deliverOrder:        (id)         => api.patch(`/orders/${id}/deliver`),
+  requestRevision:     (id, data)   => api.patch(`/orders/${id}/revision`, data),
+  updateMilestone:     (id, data)   => api.patch(`/orders/${id}/milestone`, data),
+  createCustomOffer:   (data)       => api.post('/orders/custom-offer', data),
 };
 
 // ── Search ────────────────────────────────────────────────────────────────────
@@ -87,7 +92,18 @@ export const aiAPI = {
 
 // ── Payments ──────────────────────────────────────────────────────────────────
 export const paymentAPI = {
-  processEscrow: (data) => api.post('/payments/escrow', data),
+  processEscrow:          (data) => api.post('/payments/escrow', data),
+  releaseEscrow:          (data) => api.post('/payments/escrow/release', data),
+  cancelWithCompensation: (data) => api.post('/payments/escrow/cancel', data),
+  disputeOrder:           (data) => api.post('/payments/escrow/dispute', data),
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+export const notificationAPI = {
+  getAll:         (limit = 20) => api.get(`/notifications?limit=${limit}`),
+  getUnreadCount: ()           => api.get('/notifications/unread-count'),
+  markRead:       (id)         => api.patch(`/notifications/${id}/read`),
+  markAllRead:    ()           => api.patch('/notifications/read-all'),
 };
 
 export default api;

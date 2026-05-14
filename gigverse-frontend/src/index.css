@@ -43,6 +43,16 @@
   .card {
     @apply bg-white rounded-2xl border-t-4 border-t-brand-500 border-l border-r border-b border-gray-100 shadow-sm hover:shadow-md transition-all duration-200;
   }
+
+  /* Glassmorphism panel — used for notification dropdown & overlays */
+  .glass-panel {
+    @apply bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl;
+  }
+
+  /* Glassmorphism card — stronger frosted effect */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-lg border border-gray-200/50 shadow-lg;
+  }
 }
 
 @layer utilities {
@@ -61,6 +71,39 @@
   .bg-brand-gradient {
     @apply bg-gradient-to-br from-brand-500 to-brand-700;
   }
+
+  /* Notification bell glow ring */
+  .glow-ring {
+    box-shadow: 0 0 10px rgba(242, 101, 34, 0.35),
+                0 0 30px rgba(242, 101, 34, 0.15);
+  }
+
+  /* Progress bar stripe animation for escrow tracker */
+  .progress-stripes {
+    background-image: linear-gradient(
+      45deg,
+      rgba(255,255,255,0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255,255,255,0.15) 50%,
+      rgba(255,255,255,0.15) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 1rem 1rem;
+    animation: stripeMove 0.8s linear infinite;
+  }
+
+  /* Escrow tracker step connector line */
+  .step-connector {
+    @apply h-0.5 flex-1 rounded-full transition-all duration-500;
+  }
+}
+
+/* ─── Stripe movement animation ──────────────────────────────────── */
+@keyframes stripeMove {
+  from { background-position: 1rem 0; }
+  to { background-position: 0 0; }
 }
 
 /* ─── react-phone-number-input overrides ─────────────────────────── */
@@ -144,4 +187,28 @@
 .is-dragging * {
   cursor: col-resize !important;
   user-select: none !important;
+}
+
+/* ─── Custom scrollbar for notification panel ────────────────────────────── */
+.notification-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.notification-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notification-scroll::-webkit-scrollbar-thumb {
+  background: rgba(242, 101, 34, 0.2);
+  border-radius: 2px;
+}
+.notification-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(242, 101, 34, 0.4);
+}
+
+/* ─── React Hot Toast custom styling ─────────────────────────────────────── */
+.gv-toast {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12) !important;
 }

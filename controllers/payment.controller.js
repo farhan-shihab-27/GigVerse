@@ -1,8 +1,10 @@
 // ── Premium Simulated Escrow Payment Controller ─────────────────────────────
 // Processes escrow payments via Mobile Money (bKash, Nagad, Rocket) or Bank Transfer.
 // Includes enterprise-grade error logging for Vercel ↔ Aiven MySQL debugging.
+// + Smart Dispute & Compensation Logic (Release, Cancel, Dispute)
 const pool = require('../database/db');
 const crypto = require('crypto');
+const { createNotification } = require('./notification.controller');
 
 // Valid payment methods
 const VALID_METHODS = ['bkash', 'nagad', 'rocket', 'bank'];
@@ -193,6 +195,15 @@ exports.processEscrowPayment = async (req, res, next) => {
       ]
     );
 
+    // ── Notify Contributor ──────────────────────────────────────────────────
+    await createNotification(
+      order.ContributorID,
+      'order',
+      'Payment Received',
+      `Escrow payment of ৳${Number(order.Amount).toLocaleString()} received for Order #${orderId}. Funds are held securely.`,
+      orderId
+    );
+
     console.log(`[PAYMENT OK] ${correlationId} | Order #${orderId} | ${paymentMethod} | TxID: ${transactionId} | Amount: ${order.Amount}`);
 
     return res.status(200).json({
@@ -235,5 +246,311 @@ exports.processEscrowPayment = async (req, res, next) => {
       message: 'An unexpected error occurred while processing your payment.',
       correlationId,
     });
+  }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── ESCROW RELEASE — Client confirms delivery, full payout ──────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+exports.releaseEscrow = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  const correlationId = `REL-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  try {
+    const { orderId } = req.body;
+    const userId = req.user.userId;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required.', correlationId });
+    }
+
+    const [orders] = await conn.query(
+      'SELECT * FROM Orders WHERE OrderID = ?', [orderId]
+    );
+    if (orders.length === 0) {
+      conn.release();
+      return res.status(404).json({ success: false, message: 'Order not found.', correlationId });
+    }
+    const order = orders[0];
+
+    // Only the client can release escrow
+    if (order.ClientID !== userId) {
+      conn.release();
+      return res.status(403).json({ success: false, message: 'Only the client can release escrow.', correlationId });
+    }
+
+    // Order must be in Delivered state
+    if (order.OrderStatus !== 'Delivered') {
+      conn.release();
+      return res.status(400).json({ success: false, message: 'Escrow can only be released for delivered orders.', correlationId });
+    }
+
+    await conn.beginTransaction();
+
+    // Release full payment
+    await conn.query(
+      `UPDATE Orders
+       SET PaymentStatus = 'Released',
+           OrderStatus   = 'Completed'
+       WHERE OrderID = ?`,
+      [orderId]
+    );
+
+    // Update payment record
+    await conn.query(
+      `UPDATE Payments SET Status = 'Completed' WHERE OrderID = ?`,
+      [orderId]
+    );
+
+    // Award PVP points to contributor (15 points per completed order)
+    await conn.query(
+      'UPDATE Users SET PVP_Points = PVP_Points + 15 WHERE UserID = ?',
+      [order.ContributorID]
+    );
+
+    await conn.commit();
+
+    // Notify the contributor
+    await createNotification(
+      order.ContributorID,
+      'order',
+      'Payment Released! 🎉',
+      `৳${Number(order.Amount).toLocaleString()} has been released to your account for Order #${orderId}. +15 PVP Points earned!`,
+      orderId
+    );
+
+    console.log(`[ESCROW RELEASE] ${correlationId} | Order #${orderId} | ৳${order.Amount} → Contributor #${order.ContributorID}`);
+
+    conn.release();
+    return res.json({
+      success: true,
+      message: 'Escrow released. Payment sent to contributor.',
+      correlationId,
+      data: {
+        orderId,
+        amount: order.Amount,
+        contributorId: order.ContributorID,
+        paymentStatus: 'Released',
+        orderStatus: 'Completed',
+        pvpAwarded: 15,
+      },
+    });
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    logConnectionDiagnostics(err, correlationId);
+    return res.status(500).json({ success: false, message: 'Failed to release escrow.', correlationId });
+  }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── CANCEL WITH COMPENSATION — Smart Dispute Math ───────────────────────────
+// For every revision attempt, 10% weight is added.
+// If canceled after 2 revisions → 20% to Contributor, 80% refund to Client.
+// ═════════════════════════════════════════════════════════════════════════════
+
+exports.cancelWithCompensation = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  const correlationId = `CXL-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  try {
+    const { orderId, reason } = req.body;
+    const userId = req.user.userId;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required.', correlationId });
+    }
+
+    const [orders] = await conn.query(
+      'SELECT * FROM Orders WHERE OrderID = ?', [orderId]
+    );
+    if (orders.length === 0) {
+      conn.release();
+      return res.status(404).json({ success: false, message: 'Order not found.', correlationId });
+    }
+    const order = orders[0];
+
+    // Only the client can cancel
+    if (order.ClientID !== userId) {
+      conn.release();
+      return res.status(403).json({ success: false, message: 'Only the client can cancel an order.', correlationId });
+    }
+
+    // Cannot cancel already completed or cancelled orders
+    if (['Completed', 'Cancelled'].includes(order.OrderStatus)) {
+      conn.release();
+      return res.status(400).json({ success: false, message: `Cannot cancel an order in "${order.OrderStatus}" state.`, correlationId });
+    }
+
+    await conn.beginTransaction();
+
+    // ── THE MATH ────────────────────────────────────────────────────────────
+    // compensationPercent = RevisionCount × 10, capped at 50%
+    const revisionCount = order.RevisionCount || 0;
+    const compensationPercent = Math.min(revisionCount * 10, 50);
+    const totalAmount = Number(order.Amount);
+    const contributorCompensation = Number((totalAmount * compensationPercent / 100).toFixed(2));
+    const clientRefund = Number((totalAmount - contributorCompensation).toFixed(2));
+
+    const paymentStatus = compensationPercent > 0 ? 'Partially_Refunded' : 'Refunded';
+
+    // Update order
+    await conn.query(
+      `UPDATE Orders
+       SET OrderStatus   = 'Cancelled',
+           PaymentStatus = ?
+       WHERE OrderID = ?`,
+      [paymentStatus, orderId]
+    );
+
+    // Update payment record
+    await conn.query(
+      `UPDATE Payments SET Status = 'Refunded' WHERE OrderID = ?`,
+      [orderId]
+    );
+
+    // Log the cancellation as a dispute record
+    await conn.query(
+      `INSERT INTO Disputes (OrderID, RaisedByUserID, Reason, Status, ResolutionDetails)
+       VALUES (?, ?, ?, 'Resolved', ?)`,
+      [
+        orderId,
+        userId,
+        reason || 'Client-initiated cancellation',
+        `Auto-resolved: ${compensationPercent}% (৳${contributorCompensation}) to contributor, ${100 - compensationPercent}% (৳${clientRefund}) refunded to client. Based on ${revisionCount} revision(s).`,
+      ]
+    );
+
+    await conn.commit();
+
+    // Notify both parties
+    await createNotification(
+      order.ContributorID,
+      'dispute',
+      'Order Cancelled — Compensation Applied',
+      `Order #${orderId} was cancelled. You earned ৳${contributorCompensation.toLocaleString()} (${compensationPercent}%) compensation for ${revisionCount} revision(s).`,
+      orderId
+    );
+
+    await createNotification(
+      order.ClientID,
+      'dispute',
+      'Order Cancelled — Refund Processed',
+      `Order #${orderId} cancelled. ৳${clientRefund.toLocaleString()} (${100 - compensationPercent}%) refunded. ৳${contributorCompensation.toLocaleString()} (${compensationPercent}%) goes to the contributor for work completed.`,
+      orderId
+    );
+
+    console.log(`[CANCEL+COMP] ${correlationId} | Order #${orderId} | ${revisionCount} revisions | Contributor: ৳${contributorCompensation} (${compensationPercent}%) | Client refund: ৳${clientRefund}`);
+
+    conn.release();
+    return res.json({
+      success: true,
+      message: 'Order cancelled with compensation applied.',
+      correlationId,
+      data: {
+        orderId,
+        totalAmount,
+        revisionCount,
+        compensationPercent,
+        contributorCompensation,
+        clientRefund,
+        paymentStatus,
+        orderStatus: 'Cancelled',
+      },
+    });
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    logConnectionDiagnostics(err, correlationId);
+    return res.status(500).json({ success: false, message: 'Failed to cancel order.', correlationId });
+  }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── DISPUTE ORDER — Either party raises a formal dispute ────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+exports.disputeOrder = async (req, res, next) => {
+  const correlationId = `DIS-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  try {
+    const { orderId, reason } = req.body;
+    const userId = req.user.userId;
+
+    if (!orderId || !reason) {
+      return res.status(400).json({ success: false, message: 'orderId and reason are required.', correlationId });
+    }
+
+    const [orders] = await pool.query('SELECT * FROM Orders WHERE OrderID = ?', [orderId]);
+    if (orders.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found.', correlationId });
+    }
+    const order = orders[0];
+
+    // User must be a party in this order
+    if (order.ClientID !== userId && order.ContributorID !== userId) {
+      return res.status(403).json({ success: false, message: 'You must be a party in this order to raise a dispute.', correlationId });
+    }
+
+    // Check for existing open disputes
+    const [existingDisputes] = await pool.query(
+      'SELECT DisputeID FROM Disputes WHERE OrderID = ? AND Status IN ("Open", "Under_Review")',
+      [orderId]
+    );
+    if (existingDisputes.length > 0) {
+      return res.status(409).json({ success: false, message: 'A dispute is already open for this order.', correlationId });
+    }
+
+    // Create the dispute
+    const [result] = await pool.query(
+      `INSERT INTO Disputes (OrderID, RaisedByUserID, Reason, Status)
+       VALUES (?, ?, ?, 'Open')`,
+      [orderId, userId, reason]
+    );
+
+    // Update order status
+    await pool.query(
+      `UPDATE Orders SET OrderStatus = 'Disputed' WHERE OrderID = ?`,
+      [orderId]
+    );
+
+    // Notify the other party
+    const otherPartyId = userId === order.ClientID ? order.ContributorID : order.ClientID;
+    const [[raiser]] = await pool.query('SELECT Name FROM Users WHERE UserID = ?', [userId]);
+
+    await createNotification(
+      otherPartyId,
+      'dispute',
+      'Dispute Raised',
+      `${raiser?.Name || 'A user'} raised a dispute on Order #${orderId}. Reason: "${reason.substring(0, 100)}"`,
+      orderId
+    );
+
+    // Also notify the raiser for confirmation
+    await createNotification(
+      userId,
+      'dispute',
+      'Dispute Filed Successfully',
+      `Your dispute for Order #${orderId} has been filed and is under review.`,
+      orderId
+    );
+
+    console.log(`[DISPUTE] ${correlationId} | Order #${orderId} | Raised by User #${userId}`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Dispute filed successfully. Both parties have been notified.',
+      correlationId,
+      data: {
+        disputeId: result.insertId,
+        orderId,
+        raisedBy: userId,
+        status: 'Open',
+      },
+    });
+  } catch (err) {
+    logConnectionDiagnostics(err, correlationId);
+    return res.status(500).json({ success: false, message: 'Failed to file dispute.', correlationId });
   }
 };

@@ -1,10 +1,12 @@
 // src/components/Navbar.jsx — Full-width, properly aligned navigation
+// Integrates the glassmorphic NotificationBell component.
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Search, Zap, Bell, Menu, X, LogIn, UserPlus,
+  Search, Zap, Menu, X, LogIn, UserPlus,
   User, LogOut, Trophy, Home, ClipboardList
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -93,12 +95,8 @@ export default function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-1 pl-2 border-l border-gray-200 ml-1">
-            {/* Bell */}
-            <button id="nav-notifications" title="Notifications"
-              className="relative p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all duration-150">
-              <Bell size={17} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full ring-2 ring-white" />
-            </button>
+            {/* Notification Bell (Glassmorphic) */}
+            <NotificationBell />
 
             {/* Avatar / Profile */}
             <Link to="/profile" id="nav-profile"
@@ -135,10 +133,13 @@ export default function Navbar() {
             <span className="text-gradient">Gig</span><span className="text-gray-900">Verse</span>
           </span>
         </Link>
-        <button id="nav-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="flex items-center gap-1">
+          {isLoggedIn && <NotificationBell />}
+          <button id="nav-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile drawer ── */}
