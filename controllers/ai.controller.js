@@ -3,8 +3,6 @@
 // category, skill tags, and estimated price range for the UIU campus market.
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
 // System prompt engineered for structured JSON output
 const SYSTEM_PROMPT = `You are GigVerse AI — a smart pricing engine for a university campus freelance marketplace (UIU — United International University, Bangladesh).
 
@@ -39,7 +37,7 @@ exports.estimateGig = async (req, res, next) => {
     }
 
     // ── Guard: API key not configured ──
-    if (!GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       console.warn('[AI Controller] GEMINI_API_KEY is not set in environment variables.');
       return res.status(503).json({
         success: false,
@@ -48,8 +46,8 @@ exports.estimateGig = async (req, res, next) => {
     }
 
     // ── Call Gemini API ──
-    const genAI  = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model  = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const result = await model.generateContent({
       contents: [

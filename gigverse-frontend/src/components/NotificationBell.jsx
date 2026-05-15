@@ -53,7 +53,7 @@ export default function NotificationBell() {
     if (!token) return;
 
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    const interval = setInterval(fetchUnreadCount, 10000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 

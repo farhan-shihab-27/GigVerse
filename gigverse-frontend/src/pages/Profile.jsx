@@ -1,13 +1,15 @@
-// src/pages/Profile.jsx — User Profile Dashboard (Bulletproof)
+// src/pages/Profile.jsx — User Profile Dashboard with Gig CRUD
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   User, Mail, Phone, CreditCard, Award, Star, Edit3, Save,
   X, Zap, Calendar, FileText, Shield, CheckCircle2, AlertCircle,
-  Loader2, ClipboardList, Trash2, RefreshCw
+  Loader2, ClipboardList, Trash2, RefreshCw, Briefcase, Plus, Pencil, ImageOff
 } from 'lucide-react';
-import { userAPI } from '../lib/api';
+import { userAPI, gigAPI } from '../lib/api';
 import DeleteAccountModal from '../components/DeleteAccountModal';
+import GigFormModal from '../components/GigFormModal';
+import toast from 'react-hot-toast';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -22,6 +24,12 @@ export default function Profile() {
     name: '', bio: '', dob: '',
     whatsAppNumber: '', bkashNumber: '', bankAccountDetails: '',
   });
+
+  // ── Gig CRUD State ────────────────────────────────────────────────────────
+  const [myGigs, setMyGigs]           = useState([]);
+  const [gigsLoading, setGigsLoading] = useState(true);
+  const [showGigModal, setShowGigModal] = useState(false);
+  const [editingGig, setEditingGig]   = useState(null); // null = create mode
 
   // ── Fetch profile — useCallback MUST be declared BEFORE the useEffect ──────
   const fetchProfile = useCallback(async () => {
@@ -47,8 +55,17 @@ export default function Profile() {
     }
   }, [navigate]);
 
+  const fetchMyGigs = useCallback(async () => {
+    setGigsLoading(true);
+    try {
+      const res = await gigAPI.getMyGigs();
+      setMyGigs(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch { setMyGigs([]); }
+    finally { setGigsLoading(false); }
+  }, []);
+
   // useEffect fires AFTER fetchProfile is already in scope
-  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useEffect(() => { fetchProfile(); fetchMyGigs(); }, [fetchProfile, fetchMyGigs]);
 
   const handleSave = async (e) => {
     e.preventDefault(); setSaving(true); setError(''); setSuccessMsg('');
@@ -62,6 +79,28 @@ export default function Profile() {
       fetchProfile();
     } catch (err) { setError(err.response?.data?.message || 'Update failed.'); }
     finally { setSaving(false); }
+  };
+
+  // ── Gig Actions ────────────────────────────────────────────────────────────
+  const handleDeleteGig = async (gigId, title) => {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    try {
+      await gigAPI.remove(gigId);
+      toast.success('Gig deleted.', { className: 'gv-toast', icon: '🗑️' });
+      fetchMyGigs();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete gig.', { className: 'gv-toast' });
+    }
+  };
+
+  const openEditGig = (gig) => {
+    setEditingGig(gig);
+    setShowGigModal(true);
+  };
+
+  const openCreateGig = () => {
+    setEditingGig(null);
+    setShowGigModal(true);
   };
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -136,7 +175,11 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-            <div className="shrink-0 flex items-center gap-2">
+            <div className="shrink-0 flex flex-wrap items-center gap-2">
+              <button onClick={openCreateGig}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-brand-500 text-white hover:bg-brand-600 transition-all duration-200 shadow-brand">
+                <Plus size={15} /> Create Gig
+              </button>
               <Link to="/orders" className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-green-50 text-green-600 hover:bg-green-100 transition-all duration-200">
                 <ClipboardList size={15} /> My Orders
               </Link>
@@ -178,6 +221,74 @@ export default function Profile() {
             </div>
           </div>
         )}
+
+        {/* ── MY GIGS (Dynamic CRUD) ─────────────────────────────────────────── */}
+        <div className="card p-6 mb-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <Briefcase size={15} className="text-brand-500" /> Offerings & Gigs
+            </h3>
+            <button onClick={openCreateGig}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 transition-all duration-200">
+              <Plus size={12} /> Add New
+            </button>
+          </div>
+
+          {gigsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={24} className="animate-spin text-brand-500" />
+            </div>
+          ) : myGigs.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Briefcase size={24} className="text-gray-300" />
+              </div>
+              <p className="text-sm text-gray-500 mb-3">You haven't created any gigs yet.</p>
+              <button onClick={openCreateGig} className="btn-primary !text-xs !py-2 !px-4">
+                <Plus size={13} /> Create Your First Gig
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {myGigs.map(gig => (
+                <div key={gig.GigID} className="group relative border border-gray-100 rounded-xl overflow-hidden hover:border-brand-200 hover:shadow-brand transition-all bg-white">
+                  {/* Image */}
+                  {gig.PrimaryImage ? (
+                    <div className="h-32 bg-gray-100 overflow-hidden">
+                      <img src={gig.PrimaryImage} alt={gig.Title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                  ) : (
+                    <div className="h-32 bg-gradient-to-br from-brand-50 to-orange-50 flex items-center justify-center">
+                      <ImageOff size={28} className="text-brand-200" />
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  <div className="p-4">
+                    <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2 leading-snug">{gig.Title}</h4>
+                    {gig.Description && <p className="text-xs text-gray-400 line-clamp-2 mb-3">{gig.Description}</p>}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                      <div>
+                        <span className="text-[10px] text-gray-400">Starting at</span>
+                        <p className="text-sm font-extrabold text-brand-600">&#2547;{Number(gig.BasePrice).toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => openEditGig(gig)} title="Edit gig"
+                          className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
+                          <Pencil size={13} className="text-blue-500" />
+                        </button>
+                        <button onClick={() => handleDeleteGig(gig.GigID, gig.Title)} title="Delete gig"
+                          className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors">
+                          <Trash2 size={13} className="text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* EDIT FORM */}
         {editing && (
@@ -232,6 +343,14 @@ export default function Profile() {
     </main>
 
     {showDelete && <DeleteAccountModal onClose={() => setShowDelete(false)} />}
+
+    {/* Gig Create/Edit Modal */}
+    <GigFormModal
+      isOpen={showGigModal}
+      onClose={() => { setShowGigModal(false); setEditingGig(null); }}
+      onSuccess={fetchMyGigs}
+      editGig={editingGig}
+    />
     </>
   );
 }

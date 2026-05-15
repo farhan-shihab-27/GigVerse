@@ -1,13 +1,16 @@
+// src/pages/PublicProfile.jsx — Public Portfolio with Chat Integration
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, ArrowRight, MessageSquare, User } from 'lucide-react';
+import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, MessageSquare, User } from 'lucide-react';
 import api from '../lib/api';
+import ChatDrawer from '../components/ChatDrawer';
 
 export default function PublicProfile() {
   const { id } = useParams();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => { fetchProfile(); }, [id]);
 
@@ -24,15 +27,12 @@ export default function PublicProfile() {
   };
 
   const handleContact = () => {
-    if (user?.WhatsAppNumber) {
-      const phone = user.WhatsAppNumber.replace(/[^0-9+]/g, '');
-      const msg = encodeURIComponent("Hi! I found your portfolio on GigVerse. I'm interested in discussing a custom project with you.");
-      window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-    } else if (user?.PersonalEmail) {
-      window.location.href = `mailto:${user.PersonalEmail}?subject=GigVerse Custom Project Inquiry`;
-    } else {
-      alert("No contact information available for this contributor.");
+    const token = localStorage.getItem('gv_token');
+    if (!token) {
+      window.location.href = '/auth';
+      return;
     }
+    setShowChat(true);
   };
 
   if (loading) return (<div className="min-h-[70vh] flex items-center justify-center"><Loader2 size={36} className="text-brand-500 animate-spin" /></div>);
@@ -41,6 +41,7 @@ export default function PublicProfile() {
   const initials = user.Name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
 
   return (
+    <>
     <main className="min-h-screen bg-gray-50 bg-dora-kata py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <Link to="/home" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors"><ArrowLeft size={16} /> Back to Dashboard</Link>
@@ -103,7 +104,6 @@ export default function PublicProfile() {
           <div className="lg:col-span-1 space-y-6">
             <div className="card p-6">
               <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2"><CheckCircle2 size={20} className="text-brand-500" /> Work Record</h2>
-
               <div className="mb-6">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Experiences</h3>
                 {(!user.Experiences || user.Experiences.length === 0) ? (
@@ -126,7 +126,6 @@ export default function PublicProfile() {
                   </div>
                 )}
               </div>
-
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Recent Reviews</h3>
                 {(!user.Reviews || user.Reviews.length === 0) ? (
@@ -159,5 +158,13 @@ export default function PublicProfile() {
         </div>
       </div>
     </main>
+
+    {/* Chat Drawer */}
+    <ChatDrawer
+      isOpen={showChat}
+      onClose={() => setShowChat(false)}
+      targetUser={user ? { UserID: user.UserID, Name: user.Name, ProfilePicUrl: user.ProfilePicUrl } : null}
+    />
+    </>
   );
 }

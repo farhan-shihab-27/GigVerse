@@ -8,14 +8,16 @@ import {
   X, GripVertical, ShieldCheck, ArrowUpRight,
   ChevronsLeft, ChevronsRight, ShoppingCart
 } from 'lucide-react';
-import { gigAPI, userAPI, searchAPI, orderAPI } from '../lib/api';
+import { gigAPI, userAPI, searchAPI, orderAPI, dashboardAPI, messageAPI } from '../lib/api';
 import SmartGigEstimator from '../components/SmartGigEstimator';
+import GigFormModal from '../components/GigFormModal';
+import ChatDrawer from '../components/ChatDrawer';
 
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',   to: '/home' },
   { icon: ClipboardList,   label: 'My Orders',   to: '/orders' },
   { icon: Briefcase,       label: 'Browse Gigs', to: '/search' },
-  { icon: MessageSquare,   label: 'Messages',    to: '/home' },
+  { icon: MessageSquare,   label: 'Messages',    to: '__chat__' },
   { icon: Trophy,          label: 'Leaderboard', to: '/leaderboard' },
   { icon: Wallet,          label: 'PVP Wallet',  to: '/home' },
 ];
@@ -40,6 +42,10 @@ export default function WorkspaceHome() {
   const [showSug, setShowSug]           = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(288);
   const [collapsed, setCollapsed]       = useState(false);
+  const [myStats, setMyStats]           = useState(null);
+  const [showGigModal, setShowGigModal] = useState(false);
+  const [showChat, setShowChat]         = useState(false);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
 
   const isDragging = useRef(false);
   const startX     = useRef(0);
@@ -61,6 +67,29 @@ export default function WorkspaceHome() {
       .then(r => setGigs(Array.isArray(r?.data?.data) ? r.data.data : []))
       .catch(() => setGigs([]))
       .finally(() => setGigsLoading(false));
+  }, []);
+  useEffect(() => {
+    dashboardAPI.getMyStats()
+      .then(r => { if (r?.data?.data) setMyStats(r.data.data); })
+      .catch(() => {});
+  }, []);
+
+  const refreshGigs = () => {
+    gigAPI.getAll(12)
+      .then(r => setGigs(Array.isArray(r?.data?.data) ? r.data.data : []))
+      .catch(() => {});
+  };
+
+  // Poll unread message count every 15 seconds
+  useEffect(() => {
+    const fetchUnread = () => {
+      messageAPI.getUnreadCount()
+        .then(r => setUnreadMsgCount(r?.data?.data?.count || 0))
+        .catch(() => {});
+    };
+    fetchUnread();
+    const t = setInterval(fetchUnread, 15000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -116,16 +145,16 @@ export default function WorkspaceHome() {
   ].filter(Boolean).length * 25);
 
   const QUICK_STATS = [
-    { icon: ClipboardList, label: 'Active Orders',      value: '—',       color: '#3b82f6', bg: '#eff6ff' },
+    { icon: ClipboardList, label: 'Active Orders',      value: myStats?.activeOrders ?? '—', color: '#3b82f6', bg: '#eff6ff' },
     { icon: Zap,           label: 'Available PVP',      value: profile?.PVP_Points ?? '—', color: '#f26522', bg: '#fff4eb' },
     { icon: Star,          label: 'Avg. Rating',        value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb' },
-    { icon: ShieldCheck,   label: 'Profile Completion', value: `${profilePct}%`, color: '#10b981', bg: '#f0fdf4' },
+    { icon: ShoppingCart,  label: 'Total Sales',        value: myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—', color: '#10b981', bg: '#f0fdf4' },
   ];
 
   const hasSuggestions = suggestions.skills.length > 0 || suggestions.users.length > 0;
 
   return (
-    <div className="flex bg-gray-50 bg-dora-kata" style={{ height: 'calc(100vh - 4rem)' }}>
+    <><div className="flex bg-gray-50 bg-dora-kata" style={{ height: 'calc(100vh - 4rem)' }}>
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
       <aside
@@ -137,6 +166,30 @@ export default function WorkspaceHome() {
           {!collapsed && <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Main Menu</p>}
           {NAV.map(({ icon: Icon, label, to }) => {
             const active = window.location.pathname === to && label === 'Dashboard';
+            const isChat = to === '__chat__';
+
+            if (isChat) {
+              return (
+                <button key={label} onClick={() => setShowChat(true)} title={collapsed ? label : undefined}
+                  className={`w-full flex items-center rounded-xl text-sm font-medium transition-all duration-150 relative group overflow-hidden
+                    ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'}
+                    text-gray-500 hover:text-gray-800 hover:bg-gray-50`}>
+                  <div className="relative shrink-0">
+                    <Icon size={16} />
+                    {unreadMsgCount > 0 && (
+                      <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] font-bold flex items-center justify-center animate-pulse-soft shadow-sm">
+                        {unreadMsgCount > 9 ? '9+' : unreadMsgCount}
+                      </span>
+                    )}
+                  </div>
+                  {!collapsed && <span className="whitespace-nowrap">Messages</span>}
+                  {!collapsed && unreadMsgCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 rounded-full bg-blue-500 text-white text-[9px] font-bold">{unreadMsgCount}</span>
+                  )}
+                </button>
+              );
+            }
+
             return (
               <Link key={label} to={to} title={collapsed ? label : undefined}
                 className={`flex items-center rounded-xl text-sm font-medium transition-all duration-150 relative group overflow-hidden
@@ -302,7 +355,10 @@ export default function WorkspaceHome() {
                 <h2 className="text-base font-extrabold text-gray-900">Featured Services</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Top gigs from verified UIU contributors</p>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-500"><TrendingUp size={13} />Trending</div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setShowGigModal(true)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 shadow-sm hover:shadow-brand transition-all duration-200"><Briefcase size={12} />Create Gig</button>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-500"><TrendingUp size={13} />Trending</div>
+              </div>
             </div>
             <div className="flex gap-2 mb-5 flex-wrap">
               {CATEGORIES.map(cat => (
@@ -332,8 +388,8 @@ export default function WorkspaceHome() {
                 ) : filteredGigs.map(gig => {
                   const gi = (gig.ContributorName || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
                   return (
-                    <div key={gig.GigID}
-                      className="card hover:-translate-y-1 hover:shadow-brand hover:border-brand-100 group block transition-all duration-200 overflow-hidden">
+                    <Link key={gig.GigID} to={`/gigs/${gig.GigID}`}
+                      className="card hover:-translate-y-1 hover:shadow-brand hover:border-brand-100 group block transition-all duration-200 overflow-hidden cursor-pointer">
                       {gig.PrimaryImage ? (
                         <div className="w-full h-36 overflow-hidden">
                           <img src={gig.PrimaryImage} alt={gig.Title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -347,14 +403,15 @@ export default function WorkspaceHome() {
                         <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-brand-50 text-brand-600 px-2.5 py-0.5 rounded-full mb-2">
                           {gig.DeptName || 'Campus'}
                         </span>
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug">{gig.Title}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug group-hover:text-brand-600 transition-colors">{gig.Title}</h3>
                         <div className="flex items-center gap-2 mb-3">
-                          <Link to={`/profile/${gig.ContributorID}`}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-brand-gradient overflow-hidden hover:ring-2 hover:ring-brand-200 transition-all">
+                          <span onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(`/profile/${gig.ContributorID}`); }}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-brand-gradient overflow-hidden hover:ring-2 hover:ring-brand-200 transition-all cursor-pointer">
                             {gig.ProfilePicUrl ? <img src={gig.ProfilePicUrl} alt="" className="w-full h-full object-cover" /> : gi}
-                          </Link>
+                          </span>
                           <div className="min-w-0">
-                            <Link to={`/profile/${gig.ContributorID}`} className="text-xs font-medium text-gray-700 hover:text-brand-600 transition-colors truncate block">{gig.ContributorName}</Link>
+                            <span onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(`/profile/${gig.ContributorID}`); }}
+                              className="text-xs font-medium text-gray-700 hover:text-brand-600 transition-colors truncate block cursor-pointer">{gig.ContributorName}</span>
                             <p className="text-[10px] font-semibold text-brand-500">{gig.PVP_Points ?? 0} PVP</p>
                           </div>
                           {Number(gig.AverageRating || 0) > 0 && (
@@ -369,13 +426,12 @@ export default function WorkspaceHome() {
                             <span className="text-[10px] text-gray-400">Starting at</span>
                             <p className="text-sm font-extrabold text-brand-600">&#2547;{Number(gig.BasePrice || 0).toLocaleString()}</p>
                           </div>
-                          <button onClick={() => navigate(`/gigs/${gig.GigID}`)}
-                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 shadow-sm hover:shadow-brand transition-all duration-200">
-                            <ShoppingCart size={12} />Order Now
-                          </button>
+                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-500 group-hover:bg-brand-600 shadow-sm group-hover:shadow-brand transition-all duration-200">
+                            <ArrowUpRight size={12} />View Details
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -463,5 +519,20 @@ export default function WorkspaceHome() {
         </aside>
       </div>
     </div>
+
+    {/* Gig Create Modal */}
+    <GigFormModal
+      isOpen={showGigModal}
+      onClose={() => setShowGigModal(false)}
+      onSuccess={refreshGigs}
+    />
+
+    {/* Chat Drawer */}
+    <ChatDrawer
+      isOpen={showChat}
+      onClose={() => setShowChat(false)}
+      onUnreadChange={(count) => setUnreadMsgCount(count)}
+    />
+    </>
   );
 }

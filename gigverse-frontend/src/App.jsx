@@ -1,5 +1,6 @@
 // src/App.jsx — GigVerse Router Configuration
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
@@ -16,6 +17,7 @@ function PrivateRoute({ children }) { return isAuthenticated() ? children : <Nav
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" toastOptions={{ className: 'gv-toast', duration: 3500 }} />
       <Routes>
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/auth" element={<Auth />} />

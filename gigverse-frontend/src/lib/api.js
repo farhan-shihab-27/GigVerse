@@ -59,10 +59,14 @@ export const userAPI = {
   deleteAccount:    (payload) => api.delete('/users/account', { data: payload }),
 };
 
-// ── Gigs ──────────────────────────────────────────────────────────────────────
+// ── Gigs (Full CRUD) ─────────────────────────────────────────────────────────
 export const gigAPI = {
-  getAll:  (limit=20, offset=0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
-  getById: (id)                  => api.get(`/gigs/${id}`),
+  getAll:      (limit=20, offset=0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
+  getById:     (id)                  => api.get(`/gigs/${id}`),
+  getMyGigs:   ()                    => api.get('/gigs/my'),
+  create:      (data)                => api.post('/gigs', data),
+  update:      (id, data)            => api.put(`/gigs/${id}`, data),
+  remove:      (id)                  => api.delete(`/gigs/${id}`),
 };
 
 // ── Orders ────────────────────────────────────────────────────────────────────
@@ -104,6 +108,23 @@ export const notificationAPI = {
   getUnreadCount: ()           => api.get('/notifications/unread-count'),
   markRead:       (id)         => api.patch(`/notifications/${id}/read`),
   markAllRead:    ()           => api.patch('/notifications/read-all'),
+};
+
+// ── Messages / Chat ──────────────────────────────────────────────────────────
+export const messageAPI = {
+  send:             (data)      => api.post('/messages', data),
+  getConversations: ()          => api.get('/messages/conversations'),
+  getConversation:  (userId)    => api.get(`/messages/conversation/${userId}`),
+  getUnreadCount:   ()          => api.get('/messages/unread-count'),
+  sendProposal:     (data)      => api.post('/messages/proposal', data),
+  acceptProposal:   (messageId) => api.post(`/messages/proposal/${messageId}/accept`),
+  declineProposal:  (messageId) => api.post(`/messages/proposal/${messageId}/decline`),
+};
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+export const dashboardAPI = {
+  getStats:   ()  => api.get('/dashboard/stats'),
+  getMyStats: ()  => api.get('/dashboard/my-stats'),
 };
 
 export default api;

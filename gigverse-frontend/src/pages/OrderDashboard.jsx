@@ -9,7 +9,7 @@ import {
 import { orderAPI, paymentAPI } from '../lib/api';
 import OrderTracker from '../components/OrderTracker';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const STATUS_COLORS = {
   Pending_Acceptance: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -165,7 +165,7 @@ export default function OrderDashboard() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
-      <Toaster position="top-right" />
+
       <div className="max-w-5xl mx-auto animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

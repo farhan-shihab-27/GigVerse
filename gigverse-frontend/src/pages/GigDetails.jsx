@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Zap, Star, Clock, ShieldCheck, AlertCircle, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import { gigAPI, orderAPI } from '../lib/api';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
+import ChatDrawer from '../components/ChatDrawer';
 
 export default function GigDetails() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function GigDetails() {
   // Payment Gateway Modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => { fetchGig(); }, [id]);
 
@@ -126,13 +128,8 @@ export default function GigDetails() {
 
                 <button
                   onClick={() => {
-                    if (gig.WhatsAppNumber) {
-                      window.open(`https://wa.me/${gig.WhatsAppNumber.replace(/[^0-9+]/g, '')}?text=${encodeURIComponent("Hi! I found your portfolio on GigVerse. I'm interested in discussing a custom project with you.")}`, '_blank');
-                    } else if (gig.PersonalEmail) {
-                      window.location.href = `mailto:${gig.PersonalEmail}?subject=Custom Project Inquiry`;
-                    } else {
-                      alert("No contact info available.");
-                    }
+                    if (!localStorage.getItem('gv_token')) { navigate('/auth'); return; }
+                    setShowChat(true);
                   }}
                   className="w-full !py-3.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 text-white shadow-lg mb-4 hover:opacity-90"
                   style={{ backgroundColor: '#f26522' }}
@@ -163,6 +160,13 @@ export default function GigDetails() {
           amount: gig.BasePrice,
         } : null}
         onSuccess={handlePaymentSuccess}
+      />
+
+      {/* Chat Drawer */}
+      <ChatDrawer
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        targetUser={gig ? { UserID: gig.ContributorID, Name: gig.ContributorName, ProfilePicUrl: null } : null}
       />
     </>
   );
