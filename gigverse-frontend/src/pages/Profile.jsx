@@ -133,6 +133,17 @@ export default function Profile() {
     ? new Date(profile.CreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : 'N/A';
 
+  // ── Premium role + department formatter ───────────────────────────────────
+  const formatRoleLabel = (roleName, deptName) => {
+    const dept = deptName ? `Dept. of ${deptName}` : null;
+    const rn = (roleName || '').toLowerCase();
+    let prefix = 'Member';
+    if (rn.includes('student')) prefix = 'Student';
+    else if (rn.includes('alumni')) prefix = 'Alumni';
+    else if (rn.includes('faculty')) prefix = 'Faculty';
+    return dept ? `${prefix} — ${dept}` : prefix;
+  };
+
   return (
     <>
     <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white bg-dora-kata py-8 px-4">
@@ -159,8 +170,8 @@ export default function Profile() {
             </div>
             <div className="flex-1 text-center sm:text-left">
               <h1 className="text-2xl font-extrabold text-gray-900 mb-1">{profile.Name}</h1>
-              <p className="text-sm text-gray-500 mb-2">
-                {profile.RoleName || 'Member'} &bull; {profile.DeptName || 'UIU'} ({profile.DeptCode || '—'})
+              <p className="text-sm font-semibold text-brand-600 mb-2">
+                {formatRoleLabel(profile.RoleName, profile.DeptName || 'CSE')}
               </p>
               {profile.Bio && <p className="text-sm text-gray-600 leading-relaxed mb-3 max-w-lg">{profile.Bio}</p>}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-2">

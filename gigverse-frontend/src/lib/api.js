@@ -79,6 +79,7 @@ export const orderAPI = {
   deliverOrder:        (id)         => api.patch(`/orders/${id}/deliver`),
   requestRevision:     (id, data)   => api.patch(`/orders/${id}/revision`, data),
   updateMilestone:     (id, data)   => api.patch(`/orders/${id}/milestone`, data),
+  approveMilestone:    (id, data)   => api.patch(`/orders/${id}/milestone/approve`, data),
   createCustomOffer:   (data)       => api.post('/orders/custom-offer', data),
 };
 

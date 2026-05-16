@@ -266,7 +266,9 @@ export default function OrderDashboard() {
                             currentStep={order.CurrentStep || 0}
                             milestones={order.milestones || []}
                             isContributor={contributor}
+                            isClient={client}
                             orderStatus={order.OrderStatus}
+                            orderAmount={order.Amount}
                             onStepUpdate={() => fetchOrders()}
                           />
                         </div>

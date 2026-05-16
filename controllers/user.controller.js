@@ -173,7 +173,7 @@ exports.getLeaderboard = async (req, res, next) => {
     const [rows] = await pool.query(
       `SELECT u.UserID, u.Name, u.UiuEmail, u.ProfilePicUrl,
               u.PVP_Points, u.AverageRating,
-              r.RoleName, d.DeptName
+              r.RoleName, d.DeptName, d.DeptCode
        FROM Users u
        JOIN Roles       r ON u.RoleID = r.RoleID
        JOIN Departments d ON u.DeptID = d.DeptID
@@ -370,8 +370,10 @@ exports.getPublicProfile = async (req, res, next) => {
     // 1. Core Profile & Contact Info
     const [users] = await pool.query(
       `SELECT u.UserID, u.RoleID, u.Name, u.Bio, u.PVP_Points, u.ProfilePicUrl, u.AverageRating, u.CreatedAt, u.PersonalEmail,
-              p.WhatsAppNumber
+              p.WhatsAppNumber, r.RoleName, d.DeptName, d.DeptCode
        FROM Users u
+       JOIN Roles       r ON u.RoleID = r.RoleID
+       JOIN Departments d ON u.DeptID = d.DeptID
        LEFT JOIN User_Private_Info p ON u.UserID = p.UserID
        WHERE u.UserID = ?`,
       [id]

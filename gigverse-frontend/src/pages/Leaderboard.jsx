@@ -6,6 +6,17 @@ import { userAPI } from '../lib/api';
 
 const RANK_MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
+// ── Premium role + department formatter ────────────────────────────────────────
+const formatRoleLabel = (roleName, deptName) => {
+  const dept = deptName ? `Dept. of ${deptName}` : null;
+  const rn = (roleName || '').toLowerCase();
+  let prefix = 'Member';
+  if (rn.includes('student')) prefix = 'Student';
+  else if (rn.includes('alumni')) prefix = 'Alumni';
+  else if (rn.includes('faculty')) prefix = 'Faculty';
+  return dept ? `${prefix} — ${dept}` : prefix;
+};
+
 export default function Leaderboard() {
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +103,7 @@ export default function Leaderboard() {
                   <Link to={`/profile/${u.UserID}`} className="font-bold text-gray-900 text-sm mb-0.5 hover:text-brand-600 transition-colors block">
                     {u.Name}
                   </Link>
-                  <p className="text-[10px] text-gray-400 mb-3">{u.DeptName}</p>
+                  <p className="text-[10px] font-semibold text-brand-500 mb-3">{formatRoleLabel(u.RoleName, u.DeptName || 'CSE')}</p>
                   {/* PVP pill */}
                   <div className="inline-flex items-center gap-1.5 bg-brand-50 text-brand-700 px-3 py-1.5 rounded-full text-xs font-bold">
                     <Zap size={12} className="fill-brand-500" />{u.PVP_Points} Points
@@ -151,12 +162,12 @@ export default function Leaderboard() {
                       className="text-sm font-semibold text-gray-900 truncate hover:text-brand-600 transition-colors block">
                       {u.Name}
                     </Link>
-                    <p className="text-[10px] text-gray-400 truncate">{u.RoleName}</p>
+                    <p className="text-[10px] text-brand-500 font-semibold truncate">{formatRoleLabel(u.RoleName, u.DeptName || 'CSE')}</p>
                   </div>
                 </div>
                 {/* Dept */}
                 <div className="col-span-3 hidden sm:block">
-                  <span className="text-xs text-gray-500">{u.DeptName}</span>
+                  <span className="text-xs font-medium text-gray-600">{u.DeptName || '—'}</span>
                 </div>
                 {/* Points */}
                 <div className="col-span-3 sm:col-span-2 text-center">

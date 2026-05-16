@@ -106,6 +106,18 @@
   to { background-position: 0 0; }
 }
 
+/* ─── Shimmer animation for milestone progress bar ───────────────── */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* ─── Amber glow pulse for submitted milestone cards ─────────────── */
+@keyframes glow-card {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.15); }
+  50%      { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1); }
+}
+
 /* ─── react-phone-number-input overrides ─────────────────────────── */
 .gv-phone-wrapper .PhoneInput {
   @apply flex items-center w-full rounded-xl border border-gray-200 bg-white text-sm text-gray-900 transition-all duration-200 hover:border-gray-300;

@@ -5,7 +5,8 @@ import {
   X, Send, MessageSquare, Loader2, ChevronLeft, FileText,
   DollarSign, Clock, CheckCircle2, User, Zap, XCircle,
   Mic, MicOff, Camera, FolderOpen, Phone, Video, MoreVertical,
-  Smile, Paperclip, StopCircle, Maximize2, Minimize2, Play, Square
+  Smile, Paperclip, StopCircle, Maximize2, Minimize2, Play, Square,
+  PhoneOff, Shield, Sparkles
 } from 'lucide-react';
 import { messageAPI } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -25,55 +26,66 @@ function ProposalCard({ proposal, messageId, isMine, onAccept, onDecline, accept
   const isDeclined  = proposal.status === 'declined';
 
   return (
-    <div className={`rounded-xl border-2 p-4 space-y-3 transition-all duration-300 ${
-      isAccepted ? 'border-green-200 bg-green-50/50' :
-      isDeclined ? 'border-red-200 bg-red-50/30 opacity-70' :
-      'border-brand-200 bg-brand-50/30'
+    <div className={`relative rounded-2xl p-5 space-y-4 transition-all duration-500 overflow-hidden ${
+      isAccepted
+        ? 'bg-gradient-to-br from-emerald-900/80 to-emerald-800/60 backdrop-blur-md ring-1 ring-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+        : isDeclined
+        ? 'bg-gradient-to-br from-red-900/40 to-red-800/30 backdrop-blur-md ring-1 ring-red-400/30 opacity-70'
+        : 'bg-gradient-to-br from-gray-900/80 to-gray-800/60 backdrop-blur-md ring-1 ring-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
     }`}>
-      <div className="flex items-center gap-2">
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-          isAccepted ? 'bg-green-100' : isDeclined ? 'bg-red-100' : 'bg-brand-100'
+      {/* Decorative glow orb */}
+      <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-40 ${
+        isAccepted ? 'bg-emerald-400' : isDeclined ? 'bg-red-400' : 'bg-amber-400'
+      }`} />
+
+      <div className="relative flex items-center gap-2.5">
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+          isAccepted ? 'bg-emerald-500/20 ring-1 ring-emerald-400/30' : isDeclined ? 'bg-red-500/20 ring-1 ring-red-400/30' : 'bg-amber-500/20 ring-1 ring-amber-400/30'
         }`}>
-          <FileText size={14} className={isAccepted ? 'text-green-600' : isDeclined ? 'text-red-500' : 'text-brand-600'} />
+          {isAccepted ? <Shield size={14} className="text-emerald-400" /> : isDeclined ? <XCircle size={14} className="text-red-400" /> : <Sparkles size={14} className="text-amber-400" />}
         </div>
-        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          {isAccepted ? 'Accepted Proposal' : isDeclined ? 'Declined Proposal' : 'Custom Proposal'}
+        <span className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${
+          isAccepted ? 'text-emerald-300' : isDeclined ? 'text-red-300' : 'text-amber-300'
+        }`}>
+          {isAccepted ? 'Deal Confirmed' : isDeclined ? 'Proposal Declined' : 'Custom Proposal'}
         </span>
       </div>
-      <p className="text-sm text-gray-800 font-medium leading-relaxed">{proposal.description}</p>
-      <div className="flex items-center gap-4">
+
+      <p className="relative text-sm text-white/90 font-medium leading-relaxed">{proposal.description}</p>
+
+      <div className="relative flex items-center gap-5">
         <div className="flex items-center gap-1.5">
-          <DollarSign size={13} className="text-brand-500" />
-          <span className="text-sm font-extrabold text-brand-600">৳{Number(proposal.price).toLocaleString()}</span>
+          <DollarSign size={14} className="text-amber-400" />
+          <span className="text-base font-extrabold text-white">৳{Number(proposal.price).toLocaleString()}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Clock size={13} className="text-gray-400" />
-          <span className="text-xs font-semibold text-gray-500">{proposal.deliveryDays} day{proposal.deliveryDays > 1 ? 's' : ''} delivery</span>
+          <span className="text-xs font-semibold text-gray-300">{proposal.deliveryDays} day{proposal.deliveryDays > 1 ? 's' : ''} delivery</span>
         </div>
       </div>
 
       {isAccepted ? (
-        <div className="flex items-center gap-2 text-xs font-bold text-green-600 bg-green-100 rounded-lg px-3 py-2">
+        <div className="relative flex items-center gap-2 text-xs font-bold text-emerald-300 bg-emerald-500/15 backdrop-blur-sm rounded-xl px-4 py-3 ring-1 ring-emerald-400/20">
           <CheckCircle2 size={14} /> Accepted — Order #{proposal.orderId} created
         </div>
       ) : isDeclined ? (
-        <div className="flex items-center gap-2 text-xs font-bold text-red-500 bg-red-100 rounded-lg px-3 py-2">
+        <div className="relative flex items-center gap-2 text-xs font-bold text-red-300 bg-red-500/15 backdrop-blur-sm rounded-xl px-4 py-3 ring-1 ring-red-400/20">
           <XCircle size={14} /> This proposal was declined
         </div>
       ) : !isMine ? (
-        <div className="flex gap-2">
+        <div className="relative flex gap-2 pt-1">
           <button onClick={() => onAccept(messageId)} disabled={accepting}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/25 transition-all duration-200 disabled:opacity-60">
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-gray-900 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:shadow-[0_0_30px_rgba(245,158,11,0.6)] transition-all duration-300 disabled:opacity-60 proposal-accept-glow">
             {accepting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
             Accept & Confirm Order
           </button>
           <button onClick={() => onDecline(messageId)} disabled={accepting}
-            className="px-4 py-3 rounded-xl text-sm font-bold text-red-500 border-2 border-red-200 hover:bg-red-50 transition-all duration-200 disabled:opacity-60">
-            Decline Deal
+            className="px-4 py-3.5 rounded-xl text-sm font-bold text-red-300 border border-red-500/30 hover:bg-red-500/10 backdrop-blur-sm transition-all duration-300 disabled:opacity-60">
+            Decline
           </button>
         </div>
       ) : (
-        <div className="text-xs text-gray-400 italic text-center py-1">Waiting for client to respond...</div>
+        <div className="relative text-xs text-gray-400 italic text-center py-1">Waiting for client to respond...</div>
       )}
     </div>
   );
@@ -108,6 +120,8 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [audioUrl, setAudioUrl]           = useState(null);
   const [isFullScreen, setIsFullScreen]   = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [callType, setCallType]           = useState('audio');
   const recordTimerRef  = useRef(null);
   const mediaRecRef     = useRef(null);
   const audioChunksRef  = useRef([]);
@@ -307,43 +321,89 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     if (!audioUrl || !activePartner) return;
     setSending(true);
     try {
-      await messageAPI.send({ receiverId: activePartner.PartnerId, content: '🎙️ [Voice Note]' });
+      // Encode audio blob as base64 data URL so receiver can authentically play it
+      const blob = await fetch(audioUrl).then(r => r.blob());
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+      // Store as JSON payload so renderer can detect it
+      const content = JSON.stringify({ type: 'voice', src: dataUrl, duration: recordSeconds });
+      await messageAPI.send({ receiverId: activePartner.PartnerId, content });
       setAudioUrl(null);
       setRecordSeconds(0);
       fetchMessages(activePartner.PartnerId);
       fetchConversations();
       toast.success('Voice note sent!', { className: 'gv-toast', icon: '🎤' });
-    } catch { toast.error('Failed to send voice note.', { className: 'gv-toast' }); }
+    } catch (err) { console.error('[VoiceNote] Send failed:', err.response?.data || err.message); toast.error(err.response?.data?.message || 'Failed to send voice note.', { className: 'gv-toast' }); }
     finally { setSending(false); }
   };
 
   // ── File Attachment via OS file picker ─────────────────────────────────────
-  const handleMediaUpload = () => { fileInputRef.current?.click(); };
+  const handleMediaUpload = (e) => { e.stopPropagation(); e.preventDefault(); fileInputRef.current?.click(); };
   const handleFileSelected = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !activePartner) return;
+    const MAX_SIZE_MB = 5;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`File too large. Maximum size is ${MAX_SIZE_MB} MB.`, { className: 'gv-toast' });
+      e.target.value = ''; return;
+    }
     setSending(true);
     try {
-      await messageAPI.send({ receiverId: activePartner.PartnerId, content: `📎 [File: ${file.name}] (${(file.size / 1024).toFixed(1)} KB)` });
+      // Encode file as base64 data URL so receiver can authentically download it
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const content = JSON.stringify({
+        type: 'file',
+        src: dataUrl,
+        name: file.name,
+        size: file.size,
+        mime: file.type,
+      });
+      await messageAPI.send({ receiverId: activePartner.PartnerId, content });
       fetchMessages(activePartner.PartnerId);
       fetchConversations();
       toast.success(`"${file.name}" shared!`, { className: 'gv-toast', icon: '📁' });
-    } catch { toast.error('Failed to send file.', { className: 'gv-toast' }); }
+    } catch (err) { console.error('[FileUpload] Send failed:', err.response?.data || err.message); toast.error(err.response?.data?.message || 'Failed to send file.', { className: 'gv-toast' }); }
     finally { setSending(false); e.target.value = ''; }
   };
 
   // ── Camera Capture ────────────────────────────────────────────────────────
-  const handleCamera = () => { cameraInputRef.current?.click(); };
+  const handleCamera = (e) => { e.stopPropagation(); e.preventDefault(); cameraInputRef.current?.click(); };
   const handleCameraCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !activePartner) return;
+    const MAX_SIZE_MB = 5;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error('Image too large. Maximum 5 MB.', { className: 'gv-toast' });
+      e.target.value = ''; return;
+    }
     setSending(true);
     try {
-      await messageAPI.send({ receiverId: activePartner.PartnerId, content: `📷 [Photo Capture] (${(file.size / 1024).toFixed(1)} KB)` });
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const content = JSON.stringify({
+        type: 'image',
+        src: dataUrl,
+        name: file.name,
+        size: file.size,
+        mime: file.type,
+      });
+      await messageAPI.send({ receiverId: activePartner.PartnerId, content });
       fetchMessages(activePartner.PartnerId);
       fetchConversations();
       toast.success('Photo sent!', { className: 'gv-toast', icon: '📸' });
-    } catch { toast.error('Failed to send photo.', { className: 'gv-toast' }); }
+    } catch (err) { console.error('[Camera] Send failed:', err.response?.data || err.message); toast.error(err.response?.data?.message || 'Failed to send photo.', { className: 'gv-toast' }); }
     finally { setSending(false); e.target.value = ''; }
   };
 
@@ -358,9 +418,9 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
-      {/* Hidden file inputs for media & camera */}
-      <input ref={fileInputRef} type="file" className="hidden" accept="*/*" onChange={handleFileSelected} />
-      <input ref={cameraInputRef} type="file" className="hidden" accept="image/*" capture="environment" onChange={handleCameraCapture} />
+      {/* Hidden file inputs for media & camera — onClick stopPropagation prevents drawer close */}
+      <input ref={fileInputRef} type="file" className="hidden" accept="*/*" onChange={handleFileSelected} onClick={e => e.stopPropagation()} />
+      <input ref={cameraInputRef} type="file" className="hidden" accept="image/*" capture="environment" onChange={handleCameraCapture} onClick={e => e.stopPropagation()} />
 
       {/* Drawer */}
       <div className={`relative h-full shadow-2xl flex overflow-hidden ${isFullScreen ? 'w-full' : 'w-full max-w-2xl'}`} onClick={e => e.stopPropagation()}
@@ -443,14 +503,14 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button title="Voice call (coming soon)"
+                  <button title="Voice Call"
                     className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all duration-200"
-                    onClick={() => toast('Voice calls coming soon.', { className: 'gv-toast', icon: '📞' })}>
+                    onClick={() => { setCallType('audio'); setShowCallModal(true); }}>
                     <Phone size={15} className="text-white" />
                   </button>
-                  <button title="Video call (coming soon)"
+                  <button title="Video Call"
                     className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all duration-200"
-                    onClick={() => toast('Video calls coming soon.', { className: 'gv-toast', icon: '🎥' })}>
+                    onClick={() => { setCallType('video'); setShowCallModal(true); }}>
                     <Video size={15} className="text-white" />
                   </button>
                   <button title={isFullScreen ? 'Exit full screen' : 'Full screen'}
@@ -496,6 +556,104 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                     );
                   }
 
+                  // ── Detect rich message types from JSON content ──
+                  const textContent = parsed.text || msg.Content;
+                  const richType = parsed.type; // 'voice' | 'file' | 'image' | 'text' | 'proposal' | 'system'
+
+                  // ── Voice Note Bubble ──
+                  if (richType === 'voice' && parsed.src) {
+                    return (
+                      <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] px-3 py-3 rounded-2xl shadow-sm ${
+                          isMine ? 'rounded-tr-sm text-white' : 'bg-white border border-gray-100 rounded-tl-sm'
+                        }`} style={isMine ? { background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' } : {}}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                              isMine ? 'bg-white/20' : 'bg-amber-50'
+                            }`}>
+                              <Mic size={13} className={isMine ? 'text-white' : 'text-amber-500'} />
+                            </div>
+                            <span className={`text-[11px] font-semibold ${isMine ? 'text-white/90' : 'text-gray-600'}`}>Voice Message</span>
+                            {parsed.duration > 0 && (
+                              <span className={`text-[10px] ml-auto ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
+                                {String(Math.floor(parsed.duration / 60)).padStart(2,'0')}:{String(parsed.duration % 60).padStart(2,'0')}
+                              </span>
+                            )}
+                          </div>
+                          <audio
+                            src={parsed.src}
+                            controls
+                            preload="metadata"
+                            className="w-full rounded-xl"
+                            style={{ height: '36px', minWidth: '220px' }}
+                          />
+                          <p className={`text-[10px] mt-1.5 text-right ${isMine ? 'text-white/60' : 'text-gray-400'}`}>{time}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── File Download Bubble ──
+                  if (richType === 'file' && parsed.src) {
+                    const sizeKB = parsed.size ? (parsed.size / 1024).toFixed(1) : '?';
+                    const isImg = parsed.mime?.startsWith('image/');
+                    return (
+                      <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] rounded-2xl shadow-sm overflow-hidden ${
+                          isMine ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                        }`} style={isMine ? { background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' } : { background: '#fff', border: '1px solid #f3f4f6' }}>
+                          <div className="px-4 py-3 flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              isMine ? 'bg-white/20' : 'bg-brand-50'
+                            }`}>
+                              <FileText size={18} className={isMine ? 'text-white' : 'text-brand-500'} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-semibold truncate ${isMine ? 'text-white' : 'text-gray-800'}`}>{parsed.name}</p>
+                              <p className={`text-[10px] ${isMine ? 'text-white/60' : 'text-gray-400'}`}>{sizeKB} KB</p>
+                            </div>
+                            <a
+                              href={parsed.src}
+                              download={parsed.name}
+                              title={`Download ${parsed.name}`}
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 ${
+                                isMine
+                                  ? 'bg-white/20 hover:bg-white/30 text-white'
+                                  : 'bg-brand-50 hover:bg-brand-100 text-brand-600'
+                              }`}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </a>
+                          </div>
+                          <p className={`text-[10px] pb-2 pr-3 text-right ${isMine ? 'text-white/50' : 'text-gray-400'}`}>{time}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── Image Bubble ──
+                  if (richType === 'image' && parsed.src) {
+                    return (
+                      <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div className="max-w-[65%]">
+                          <div className={`rounded-2xl overflow-hidden shadow-sm ${
+                            isMine ? 'rounded-tr-sm ring-2 ring-amber-400/40' : 'rounded-tl-sm ring-1 ring-gray-100'
+                          }`}>
+                            <img
+                              src={parsed.src}
+                              alt={parsed.name || 'Photo'}
+                              className="w-full object-cover max-h-64 cursor-pointer hover:opacity-95 transition-opacity"
+                              onClick={() => window.open(parsed.src, '_blank')}
+                            />
+                          </div>
+                          <p className={`text-[10px] mt-1 ${isMine ? 'text-right text-gray-400' : 'text-gray-400'}`}>{time}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── Plain Text Bubble (fallback) ──
                   return (
                     <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
@@ -503,7 +661,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                           ? 'text-white rounded-tr-sm'
                           : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
                       }`} style={isMine ? { background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' } : {}}>
-                        <p>{parsed.text || msg.Content}</p>
+                        <p>{textContent}</p>
                         <p className={`text-[10px] mt-1 text-right ${isMine ? 'text-white/60' : 'text-gray-400'}`}>{time}</p>
                       </div>
                     </div>
@@ -658,12 +816,53 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
         </div>
       </div>
 
+      {/* ── TASK 3: Jitsi Meet Call Modal ── */}
+      {showCallModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={e => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCallModal(false)} />
+          <div className="relative w-full max-w-2xl mx-4 rounded-2xl overflow-hidden bg-gray-900 shadow-2xl shadow-black/50 ring-1 ring-white/10 animate-scale-in">
+            {/* Call Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center ring-1 ring-green-400/30">
+                  {callType === 'video' ? <Video size={14} className="text-green-400" /> : <Phone size={14} className="text-green-400" />}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">{callType === 'video' ? 'Video' : 'Voice'} Call</p>
+                  <p className="text-[10px] text-gray-400 font-medium">with {activePartner?.PartnerName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-green-400 font-semibold">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" /> Live
+              </div>
+            </div>
+            {/* Jitsi iframe */}
+            <iframe
+              src={`https://meet.jit.si/GigVerse_Call_${activePartner?.PartnerId}_${currentUser?.UserID || 'u'}#config.prejoinPageEnabled=false`}
+              width="100%"
+              height="480"
+              allow="camera; microphone; fullscreen; display-capture"
+              className="w-full border-0"
+              style={{ background: '#1a1a2e' }}
+            />
+            {/* End Call Button */}
+            <div className="flex justify-center py-4 bg-gray-900 border-t border-white/5">
+              <button
+                onClick={() => { setShowCallModal(false); toast('Call ended.', { className: 'gv-toast', icon: '📞' }); }}
+                className="flex items-center gap-2 px-8 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-bold text-sm shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all duration-300 hover:scale-105"
+              >
+                <PhoneOff size={16} /> End Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes slideLeft {
           from { transform: translateX(100%); opacity: 0; }
           to   { transform: translateX(0);    opacity: 1; }
         }
-        /* WhatsApp-style message tail for sent messages */
         .msg-sent::after {
           content: '';
           position: absolute;
@@ -673,11 +872,16 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
           border-style: solid;
           border-color: transparent transparent transparent #F59E0B;
         }
-        /* Thin branded scrollbar for chat area */
         .chat-scroll::-webkit-scrollbar { width: 4px; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.25); border-radius: 2px; }
         .chat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(245,158,11,0.45); }
+        /* Ultra-premium proposal accept button glow */
+        @keyframes proposalGlow {
+          0%, 100% { box-shadow: 0 0 15px rgba(245,158,11,0.4); }
+          50%      { box-shadow: 0 0 30px rgba(245,158,11,0.7), 0 0 60px rgba(245,158,11,0.2); }
+        }
+        .proposal-accept-glow { animation: proposalGlow 2s ease-in-out infinite; }
       `}</style>
     </div>
   );

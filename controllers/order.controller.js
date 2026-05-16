@@ -111,10 +111,11 @@ exports.acceptOrder = async (req, res, next) => {
       [deadline, orderId]
     );
 
-    // Generate 4 default milestones
-    const milestoneValues = DEFAULT_MILESTONES.map(m => [orderId, m.step, m.label]);
+    // Generate 4 default milestones with escrow splits
+    const perMilestone = Number((order.Amount * 0.25).toFixed(2));
+    const milestoneValues = DEFAULT_MILESTONES.map(m => [orderId, m.step, m.label, 25, perMilestone, 'pending']);
     await conn.query(
-      'INSERT INTO OrderMilestones (OrderID, Step, Label) VALUES ?',
+      'INSERT INTO OrderMilestones (OrderID, Step, Label, AmountPercent, AmountTaka, Status) VALUES ?',
       [milestoneValues]
     );
 
@@ -143,7 +144,7 @@ exports.acceptOrder = async (req, res, next) => {
   }
 };
 
-// ── Update Milestone (Contributor advances a step) ──────────────────────────
+// ── Submit Milestone (Contributor marks a step as done) ─────────────────────
 exports.updateMilestone = async (req, res, next) => {
   try {
     const orderId = req.params.id;
@@ -155,49 +156,139 @@ exports.updateMilestone = async (req, res, next) => {
     }
 
     const [orders] = await pool.query('SELECT * FROM Orders WHERE OrderID = ?', [orderId]);
-    if (orders.length === 0) {
-      return res.status(404).json({ success: false, message: 'Order not found.' });
-    }
+    if (orders.length === 0) return res.status(404).json({ success: false, message: 'Order not found.' });
     const order = orders[0];
 
     if (order.ContributorID !== userId) {
       return res.status(403).json({ success: false, message: 'Only the contributor can update milestones.' });
     }
-
     if (order.OrderStatus !== 'In_Progress') {
       return res.status(400).json({ success: false, message: 'Milestones can only be updated for in-progress orders.' });
     }
 
-    // Mark the milestone as completed
+    // Mark milestone as submitted + completed timestamp
     await pool.query(
-      'UPDATE OrderMilestones SET CompletedAt = NOW() WHERE OrderID = ? AND Step = ? AND CompletedAt IS NULL',
+      `UPDATE OrderMilestones
+       SET CompletedAt = IFNULL(CompletedAt, NOW()),
+           Status      = 'submitted_by_freelancer'
+       WHERE OrderID = ? AND Step = ? AND Status = 'pending'`,
       [orderId, step]
     );
 
     // Update current step on the order
-    await pool.query(
-      'UPDATE Orders SET CurrentStep = ? WHERE OrderID = ?',
-      [step, orderId]
-    );
+    await pool.query('UPDATE Orders SET CurrentStep = ?, CurrentMilestone = ? WHERE OrderID = ?', [step, step, orderId]);
 
     const milestoneLabel = DEFAULT_MILESTONES.find(m => m.step === step)?.label || `Step ${step}`;
     const percentage = step * 25;
 
-    // Notify the client about milestone progress
     await createNotification(
-      order.ClientID,
-      'milestone',
-      `${percentage}% Progress Update`,
-      `"${milestoneLabel}" milestone reached on your order #${orderId}. ${percentage}% of escrow secured.`,
+      order.ClientID, 'milestone', `${percentage}% — Review Required`,
+      `"${milestoneLabel}" submitted for your approval on Order #${orderId}. Review and release ${percentage}% escrow.`,
       Number(orderId)
     );
 
     return res.json({
       success: true,
-      message: `Milestone ${step} (${milestoneLabel}) completed — ${percentage}% progress.`,
+      message: `Milestone ${step} (${milestoneLabel}) submitted — awaiting client approval.`,
       data: { orderId: Number(orderId), currentStep: step, percentage },
     });
+  } catch (err) { next(err); }
+};
+
+// ── Approve Milestone & Release Escrow (Client) ─────────────────────────────
+exports.approveMilestone = async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const orderId = req.params.id;
+    const userId  = req.user.userId;
+    const { step } = req.body;
+
+    if (!step || step < 1 || step > 4) {
+      conn.release();
+      return res.status(400).json({ success: false, message: 'Step must be between 1 and 4.' });
+    }
+
+    const [orders] = await conn.query('SELECT * FROM Orders WHERE OrderID = ?', [orderId]);
+    if (orders.length === 0) { conn.release(); return res.status(404).json({ success: false, message: 'Order not found.' }); }
+    const order = orders[0];
+
+    if (order.ClientID !== userId) { conn.release(); return res.status(403).json({ success: false, message: 'Only the client can approve milestones.' }); }
+
+    // Fetch the specific milestone
+    const [milestones] = await conn.query(
+      'SELECT * FROM OrderMilestones WHERE OrderID = ? AND Step = ?', [orderId, step]
+    );
+    if (milestones.length === 0) { conn.release(); return res.status(404).json({ success: false, message: 'Milestone not found.' }); }
+    const ms = milestones[0];
+
+    if (ms.Status !== 'submitted_by_freelancer') {
+      conn.release();
+      return res.status(400).json({ success: false, message: `Milestone is "${ms.Status}", not submitted for approval.` });
+    }
+
+    await conn.beginTransaction();
+
+    // Calculate release amount (25% of order total per milestone)
+    const releasePercent = ms.AmountPercent || 25;
+    const releaseTaka = Number((Number(order.Amount) * releasePercent / 100).toFixed(2));
+    const txnId = `MS-${orderId}-S${step}-${Date.now()}`;
+
+    // Update milestone status
+    await conn.query(
+      `UPDATE OrderMilestones
+       SET Status = 'funds_released', ApprovedAt = NOW(), AmountTaka = ?, ReleasedTransactionId = ?
+       WHERE OrderID = ? AND Step = ?`,
+      [releaseTaka, txnId, orderId, step]
+    );
+
+    // Track total escrow released on the order
+    const newEscrowReleased = Number(order.EscrowReleased || 0) + releaseTaka;
+    await conn.query(
+      'UPDATE Orders SET EscrowReleased = ?, CurrentMilestone = ? WHERE OrderID = ?',
+      [newEscrowReleased, step, orderId]
+    );
+
+    // Award PVP points per milestone (4 per step)
+    await conn.query('UPDATE Users SET PVP_Points = PVP_Points + 4 WHERE UserID = ?', [order.ContributorID]);
+
+    // If all 4 milestones are released, mark order as Completed
+    const [allMs] = await conn.query(
+      "SELECT COUNT(*) AS released FROM OrderMilestones WHERE OrderID = ? AND Status = 'funds_released'",
+      [orderId]
+    );
+    if (allMs[0].released >= 4) {
+      await conn.query("UPDATE Orders SET OrderStatus = 'Completed', PaymentStatus = 'Released' WHERE OrderID = ?", [orderId]);
+      await conn.query("UPDATE Payments SET Status = 'Completed' WHERE OrderID = ?", [orderId]);
+    }
+
+    // Send system chat message about the release
+    const sysMsg = JSON.stringify({
+      type: 'system',
+      text: `Milestone ${step} Approved: ৳${releaseTaka.toLocaleString()} released from Escrow. (${releasePercent}% of ৳${Number(order.Amount).toLocaleString()})`,
+    });
+    await conn.query(
+      'INSERT INTO Messages (SenderID, ReceiverID, Content) VALUES (?, ?, ?)',
+      [order.ClientID, order.ContributorID, sysMsg]
+    );
+
+    await conn.commit();
+
+    const milestoneLabel = DEFAULT_MILESTONES.find(m => m.step === step)?.label || `Step ${step}`;
+    await createNotification(
+      order.ContributorID, 'milestone', `Milestone ${step} Approved! 🎉`,
+      `৳${releaseTaka.toLocaleString()} released for "${milestoneLabel}" on Order #${orderId}. +4 PVP!`,
+      Number(orderId)
+    );
+
+    conn.release();
+    return res.json({
+      success: true,
+      message: `Milestone ${step} approved. ৳${releaseTaka.toLocaleString()} released.`,
+      data: { orderId: Number(orderId), step, releaseTaka, txnId, totalReleased: newEscrowReleased },
+    });
   } catch (err) {
+    await conn.rollback();
+    conn.release();
     next(err);
   }
 };

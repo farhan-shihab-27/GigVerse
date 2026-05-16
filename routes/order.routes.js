@@ -16,6 +16,7 @@ router.patch('/:id/accept',    authenticate, ctrl.acceptOrder);
 router.patch('/:id/deliver',   authenticate, ctrl.deliverOrder);
 router.patch('/:id/revision',  authenticate, ctrl.requestRevision);
 router.patch('/:id/milestone', authenticate, ctrl.updateMilestone);
+router.patch('/:id/milestone/approve', authenticate, ctrl.approveMilestone);
 
 router.get('/user/:userId', ctrl.getOrdersByUser);
 

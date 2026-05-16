@@ -2,7 +2,7 @@
 // Glowing bell with unread count, slide-down panel, and toast integration.
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, Check, CheckCheck, MessageSquare, ClipboardList, Star, AlertTriangle, Zap, X } from 'lucide-react';
-import { notificationAPI } from '../lib/api';
+import { notificationAPI, messageAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
 // ── Icon map by notification type ───────────────────────────────────────────
@@ -24,25 +24,39 @@ export default function NotificationBell() {
   const panelRef = useRef(null);
   const prevCount = useRef(0);
 
-  // ── Fetch unread count (polling every 30s) ────────────────────────────────
+  // ── Fetch unread count (polling every 10s) ─────────────────────────────────
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const res = await notificationAPI.getUnreadCount();
-      const count = res.data?.data?.count || 0;
+      let notifCount = 0;
+      let msgCount = 0;
+
+      // Fetch notification unread count
+      try {
+        const res = await notificationAPI.getUnreadCount();
+        notifCount = res.data?.data?.count || 0;
+      } catch { /* backend may not have notification table yet */ }
+
+      // Fetch message unread count
+      try {
+        const res2 = await messageAPI.getUnreadCount();
+        msgCount = res2.data?.data?.count || 0;
+      } catch { /* silent */ }
+
+      const totalCount = notifCount + msgCount;
 
       // If new notifications arrived, animate bell + show toast
-      if (count > prevCount.current && prevCount.current !== 0) {
+      if (totalCount > prevCount.current && prevCount.current !== 0) {
         setBellAnimate(true);
         setTimeout(() => setBellAnimate(false), 600);
-        toast('You have new notifications!', {
-          icon: '🔔',
+        toast(msgCount > 0 ? 'New message received!' : 'You have new notifications!', {
+          icon: msgCount > 0 ? '💬' : '🔔',
           className: 'gv-toast',
           duration: 3000,
           style: { borderLeft: '4px solid #f26522' },
         });
       }
-      prevCount.current = count;
-      setUnreadCount(count);
+      prevCount.current = totalCount;
+      setUnreadCount(totalCount);
     } catch {
       // Silently fail — non-critical
     }
@@ -61,8 +75,33 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await notificationAPI.getAll(20);
-      setNotifications(res.data?.data || []);
+      let items = [];
+
+      // Fetch real notifications
+      try {
+        const res = await notificationAPI.getAll(20);
+        items = res.data?.data || [];
+      } catch { /* silent */ }
+
+      // If no real notifications, generate synthetic ones from messages
+      if (items.length === 0) {
+        try {
+          const convRes = await messageAPI.getConversations();
+          const convos = convRes.data?.data || [];
+          const unreadConvos = convos.filter(c => (c.UnreadCount || 0) > 0);
+          const syntheticNotifs = unreadConvos.slice(0, 5).map((c, i) => ({
+            NotificationID: `msg-${c.PartnerId}-${i}`,
+            Type: 'message',
+            Title: `New Message from ${c.PartnerName}`,
+            Content: c.LastMessage?.slice(0, 80) || 'You have an unread message.',
+            IsRead: 0,
+            CreatedAt: c.LastMessageAt || new Date().toISOString(),
+          }));
+          items = [...syntheticNotifs, ...items];
+        } catch { /* silent */ }
+      }
+
+      setNotifications(items);
     } catch {
       setNotifications([]);
     } finally {

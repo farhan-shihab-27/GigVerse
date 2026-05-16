@@ -455,7 +455,17 @@ export default function WorkspaceHome() {
                 {profile?.ProfilePicUrl ? <img src={profile.ProfilePicUrl} alt="" className="w-full h-full object-cover" /> : initials}
               </div>
               <h3 className="text-sm font-bold text-gray-900 mb-0.5">{profile?.Name || user.Name || '...'}</h3>
-              <p className="text-xs text-gray-400 mb-4">{profile?.RoleName} · {profile?.DeptCode}</p>
+              <p className="text-xs font-semibold text-brand-500 mb-4">
+                {(() => {
+                  const rn = (profile?.RoleName || '').toLowerCase();
+                  let prefix = 'Member';
+                  if (rn.includes('student')) prefix = 'Student';
+                  else if (rn.includes('alumni')) prefix = 'Alumni';
+                  else if (rn.includes('faculty')) prefix = 'Faculty';
+                  const dept = (profile?.DeptName || 'CSE') ? `Dept. of ${profile?.DeptName || 'CSE'}` : null;
+                  return dept ? `${prefix} — ${dept}` : prefix;
+                })()}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
                   <p className="text-lg font-extrabold text-brand-500">{profile?.PVP_Points ?? '—'}</p>

@@ -62,6 +62,17 @@ export default function PublicProfile() {
 
   const initials = user.Name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
 
+  // ── Premium role + department formatter ──────────────────────────────────
+  const formatRoleLabel = (roleName, deptName) => {
+    const dept = deptName ? `Dept. of ${deptName}` : null;
+    const rn = (roleName || '').toLowerCase();
+    let prefix = 'Member';
+    if (rn.includes('student')) prefix = 'Student';
+    else if (rn.includes('alumni')) prefix = 'Alumni';
+    else if (rn.includes('faculty')) prefix = 'Faculty';
+    return dept ? `${prefix} — ${dept}` : prefix;
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 bg-dora-kata py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -78,7 +89,7 @@ export default function PublicProfile() {
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">{user.Name}</h1>
               <div className="mb-3">
                 <span className="inline-block px-3 py-1 bg-brand-50 text-brand-600 font-bold text-sm rounded-full border border-brand-100 shadow-sm">
-                  {Number(user.RoleID) === 1 ? 'Current Student' : Number(user.RoleID) === 2 ? 'Alumni' : Number(user.RoleID) === 3 ? 'Faculty' : 'Member'}
+                  {formatRoleLabel(user.RoleName, user.DeptName || 'CSE')}
                 </span>
               </div>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-4">

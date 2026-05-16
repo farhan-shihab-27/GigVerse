@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS Messages (
   MessageID  INT       AUTO_INCREMENT PRIMARY KEY,
   SenderID   INT       NOT NULL,
   ReceiverID INT       NOT NULL,
-  Content    TEXT      NOT NULL,
+  Content    LONGTEXT  NOT NULL,
   IsRead     BOOLEAN   NOT NULL DEFAULT FALSE,
   Timestamp  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_messages_sender
