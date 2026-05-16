@@ -1,16 +1,14 @@
-// src/pages/PublicProfile.jsx — Public Portfolio with Chat Integration
+// src/pages/PublicProfile.jsx — Public Portfolio with Gmail Web Contact Flow
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, MessageSquare, User } from 'lucide-react';
+import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, User } from 'lucide-react';
 import api from '../lib/api';
-import ChatDrawer from '../components/ChatDrawer';
 
 export default function PublicProfile() {
   const { id } = useParams();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => { fetchProfile(); }, [id]);
 
@@ -26,13 +24,37 @@ export default function PublicProfile() {
     }
   };
 
+  // ── Build Gmail Web Compose URL (bypasses broken native Outlook on Windows) ──
+  const buildGmailComposeUrl = () => {
+    if (!user) return '#';
+
+    // Get the logged-in client's name from localStorage
+    let clientName = 'A GigVerse Client';
+    try {
+      const stored = JSON.parse(localStorage.getItem('gv_user') || '{}');
+      if (stored.Name) clientName = stored.Name;
+    } catch { /* fallback to default */ }
+
+    const contributorName = user.Name || 'Contributor';
+    const contributorEmail = user.UiuEmail || '';
+
+    // Use Vite env variable for production-safe URL; fallback to current origin
+    const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+
+    const subject = `[GigVerse Custom Project Request] - ${clientName}`;
+    const body = `Dear ${contributorName},\n\nI recently viewed your profile on GigVerse and am very impressed with your offerings. I would like to initiate a conversation for a customized project with you.\n\nPlease click this link to access our secure workspace and accept the conversation request: ${frontendUrl}/dashboard/messages?initiate=true\n\nBest regards,\n${clientName}`;
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contributorEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   const handleContact = () => {
     const token = localStorage.getItem('gv_token');
     if (!token) {
       window.location.href = '/auth';
       return;
     }
-    setShowChat(true);
+    // Open Gmail Web Compose in a new tab
+    window.open(buildGmailComposeUrl(), '_blank', 'noopener,noreferrer');
   };
 
   if (loading) return (<div className="min-h-[70vh] flex items-center justify-center"><Loader2 size={36} className="text-brand-500 animate-spin" /></div>);
@@ -41,7 +63,6 @@ export default function PublicProfile() {
   const initials = user.Name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
 
   return (
-    <>
     <main className="min-h-screen bg-gray-50 bg-dora-kata py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <Link to="/home" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors"><ArrowLeft size={16} /> Back to Dashboard</Link>
@@ -68,7 +89,7 @@ export default function PublicProfile() {
             </div>
             <div className="w-full md:w-auto mt-4 md:mt-0">
               <button onClick={handleContact} className="w-full md:w-auto py-3 px-8 rounded-xl font-bold text-white shadow-lg shadow-orange-500/20 hover:opacity-90 transition-all flex items-center justify-center gap-2" style={{ backgroundColor: '#f26522' }}>
-                <MessageSquare size={18} /> Contact for Custom Work
+                <Mail size={18} /> Contact for Custom Work
               </button>
             </div>
           </div>
@@ -158,13 +179,5 @@ export default function PublicProfile() {
         </div>
       </div>
     </main>
-
-    {/* Chat Drawer */}
-    <ChatDrawer
-      isOpen={showChat}
-      onClose={() => setShowChat(false)}
-      targetUser={user ? { UserID: user.UserID, Name: user.Name, ProfilePicUrl: user.ProfilePicUrl } : null}
-    />
-    </>
   );
 }

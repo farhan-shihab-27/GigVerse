@@ -239,7 +239,7 @@ exports.acceptProposal = async (req, res, next) => {
     // 5. Send a system message confirming the deal
     const confirmMsg = JSON.stringify({
       type: 'system',
-      text: `Proposal accepted! Order #${orderId} created for ৳${Number(amount).toLocaleString()}. The contributor can now begin work.`,
+      text: `Order Started & Funds Secured in Escrow — Order #${orderId} created for ৳${Number(amount).toLocaleString()}. Delivery in ${proposal.deliveryDays} day(s). The contributor can now begin work.`,
     });
     await conn.query(
       'INSERT INTO Messages (SenderID, ReceiverID, Content) VALUES (?, ?, ?)',

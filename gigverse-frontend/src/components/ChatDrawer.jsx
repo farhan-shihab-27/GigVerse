@@ -1,9 +1,11 @@
-// src/components/ChatDrawer.jsx — Transactional Messaging + Custom Proposal System
-// Slide-in drawer with conversation list, real-time chat, and embedded proposals.
+// src/components/ChatDrawer.jsx — Premium Amber Messaging + Full-Screen + Media
+// Slide-in drawer: soft amber palette, voice recording, camera, file attach, proposals.
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, Send, MessageSquare, Loader2, ChevronLeft, FileText,
-  DollarSign, Clock, CheckCircle2, User, Zap, XCircle
+  DollarSign, Clock, CheckCircle2, User, Zap, XCircle,
+  Mic, MicOff, Camera, FolderOpen, Phone, Video, MoreVertical,
+  Smile, Paperclip, StopCircle, Maximize2, Minimize2, Play, Square
 } from 'lucide-react';
 import { messageAPI } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -61,13 +63,13 @@ function ProposalCard({ proposal, messageId, isMine, onAccept, onDecline, accept
       ) : !isMine ? (
         <div className="flex gap-2">
           <button onClick={() => onAccept(messageId)} disabled={accepting}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-brand-500 to-orange-500 hover:from-brand-600 hover:to-orange-600 shadow-brand transition-all duration-200 disabled:opacity-60">
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/25 transition-all duration-200 disabled:opacity-60">
             {accepting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-            Accept Deal
+            Accept & Confirm Order
           </button>
           <button onClick={() => onDecline(messageId)} disabled={accepting}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold text-red-500 border-2 border-red-200 hover:bg-red-50 transition-all duration-200 disabled:opacity-60">
-            Decline
+            className="px-4 py-3 rounded-xl text-sm font-bold text-red-500 border-2 border-red-200 hover:bg-red-50 transition-all duration-200 disabled:opacity-60">
+            Decline Deal
           </button>
         </div>
       ) : (
@@ -101,6 +103,16 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
   const [accepting, setAccepting]         = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
   const [proposal, setProposal]           = useState({ price: '', deliveryDays: '', description: '' });
+  // Media feature states
+  const [isRecording, setIsRecording]     = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [audioUrl, setAudioUrl]           = useState(null);
+  const [isFullScreen, setIsFullScreen]   = useState(false);
+  const recordTimerRef  = useRef(null);
+  const mediaRecRef     = useRef(null);
+  const audioChunksRef  = useRef([]);
+  const fileInputRef    = useRef(null);
+  const cameraInputRef  = useRef(null);
 
   const chatEndRef = useRef(null);
   const pollRef    = useRef(null);
@@ -245,6 +257,98 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
+  // ── Voice Recording with Web Audio API (MediaRecorder) ──────────────────────
+  const handleMicToggle = async () => {
+    if (isRecording) {
+      // Stop recording
+      mediaRecRef.current?.stop();
+      clearInterval(recordTimerRef.current);
+      setIsRecording(false);
+    } else {
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+        mediaRecRef.current = recorder;
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        recorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          setAudioUrl(url);
+          toast.success('Voice note ready! Press send to deliver.', { className: 'gv-toast', icon: '🎙️' });
+        };
+
+        recorder.start();
+        setIsRecording(true);
+        setRecordSeconds(0);
+        setAudioUrl(null);
+        recordTimerRef.current = setInterval(() => setRecordSeconds(s => s + 1), 1000);
+        toast('Recording started...', { className: 'gv-toast', icon: '🔴', duration: 1500 });
+      } catch {
+        toast.error('Microphone access denied. Please allow microphone permission.', { className: 'gv-toast' });
+      }
+    }
+  };
+
+  const handleCancelRecording = () => {
+    mediaRecRef.current?.stop();
+    clearInterval(recordTimerRef.current);
+    setIsRecording(false);
+    setAudioUrl(null);
+    setRecordSeconds(0);
+  };
+
+  const handleSendVoiceNote = async () => {
+    if (!audioUrl || !activePartner) return;
+    setSending(true);
+    try {
+      await messageAPI.send({ receiverId: activePartner.PartnerId, content: '🎙️ [Voice Note]' });
+      setAudioUrl(null);
+      setRecordSeconds(0);
+      fetchMessages(activePartner.PartnerId);
+      fetchConversations();
+      toast.success('Voice note sent!', { className: 'gv-toast', icon: '🎤' });
+    } catch { toast.error('Failed to send voice note.', { className: 'gv-toast' }); }
+    finally { setSending(false); }
+  };
+
+  // ── File Attachment via OS file picker ─────────────────────────────────────
+  const handleMediaUpload = () => { fileInputRef.current?.click(); };
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePartner) return;
+    setSending(true);
+    try {
+      await messageAPI.send({ receiverId: activePartner.PartnerId, content: `📎 [File: ${file.name}] (${(file.size / 1024).toFixed(1)} KB)` });
+      fetchMessages(activePartner.PartnerId);
+      fetchConversations();
+      toast.success(`"${file.name}" shared!`, { className: 'gv-toast', icon: '📁' });
+    } catch { toast.error('Failed to send file.', { className: 'gv-toast' }); }
+    finally { setSending(false); e.target.value = ''; }
+  };
+
+  // ── Camera Capture ────────────────────────────────────────────────────────
+  const handleCamera = () => { cameraInputRef.current?.click(); };
+  const handleCameraCapture = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePartner) return;
+    setSending(true);
+    try {
+      await messageAPI.send({ receiverId: activePartner.PartnerId, content: `📷 [Photo Capture] (${(file.size / 1024).toFixed(1)} KB)` });
+      fetchMessages(activePartner.PartnerId);
+      fetchConversations();
+      toast.success('Photo sent!', { className: 'gv-toast', icon: '📸' });
+    } catch { toast.error('Failed to send photo.', { className: 'gv-toast' }); }
+    finally { setSending(false); e.target.value = ''; }
+  };
+
+  const formatRecordTime = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
   if (!isOpen) return null;
 
   const partnerInitials = (activePartner?.PartnerName || '??').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -252,21 +356,27 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      {/* Hidden file inputs for media & camera */}
+      <input ref={fileInputRef} type="file" className="hidden" accept="*/*" onChange={handleFileSelected} />
+      <input ref={cameraInputRef} type="file" className="hidden" accept="image/*" capture="environment" onChange={handleCameraCapture} />
 
       {/* Drawer */}
-      <div className="relative w-full max-w-2xl h-full bg-white shadow-2xl flex" onClick={e => e.stopPropagation()}
-        style={{ animation: 'slideLeft 0.35s ease-out' }}>
+      <div className={`relative h-full shadow-2xl flex overflow-hidden ${isFullScreen ? 'w-full' : 'w-full max-w-2xl'}`} onClick={e => e.stopPropagation()}
+        style={{ animation: 'slideLeft 0.35s cubic-bezier(0.32,0.72,0,1)', background: '#f8f9fa' }}>
 
         {/* ── Conversation List Sidebar ──────────────────────────────────────── */}
-        <div className={`${activePartner ? 'hidden sm:flex' : 'flex'} flex-col w-72 border-r border-gray-100 shrink-0`}>
-          <div className="px-4 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-50 to-orange-50/40">
+        <div className={`${activePartner ? 'hidden sm:flex' : 'flex'} flex-col w-72 shrink-0`}
+          style={{ background: '#fff', borderRight: '1px solid #e5e7eb' }}>
+          <div className="px-4 py-4 border-b border-gray-100"
+            style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-                <MessageSquare size={16} className="text-brand-500" /> Messages
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <MessageSquare size={16} className="text-white/90" /> GigVerse Messages
               </h3>
-              <button onClick={onClose} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                <X size={14} className="text-gray-500" />
+              <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+                <X size={14} className="text-white" />
               </button>
             </div>
           </div>
@@ -314,25 +424,52 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
             </div>
           ) : (
             <>
-              {/* Chat Header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white shrink-0">
-                <button onClick={() => setActivePartner(null)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors sm:hidden">
-                  <ChevronLeft size={14} className="text-gray-500" />
+              {/* ── WhatsApp-Level Chat Header ── */}
+              <div className="flex items-center gap-3 px-5 py-4 shrink-0"
+                style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
+                <button onClick={() => setActivePartner(null)}
+                  className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors sm:hidden">
+                  <ChevronLeft size={14} className="text-white" />
                 </button>
-                <div className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
-                  {activePartner.PartnerAvatar ? <img src={activePartner.PartnerAvatar} alt="" className="w-full h-full object-cover" /> : partnerInitials}
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden ring-2 ring-white/30">
+                  {activePartner.PartnerAvatar
+                    ? <img src={activePartner.PartnerAvatar} alt="" className="w-full h-full object-cover" />
+                    : <span className="text-sm font-extrabold">{partnerInitials}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{activePartner.PartnerName}</p>
-                  <p className="text-[10px] text-green-500 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 bg-green-400 rounded-full" />Active on GigVerse</p>
+                  <p className="text-sm font-bold text-white truncate">{activePartner.PartnerName}</p>
+                  <p className="text-[10px] text-white/80 font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-300 rounded-full" />Active on GigVerse
+                  </p>
                 </div>
-                <button onClick={onClose} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                  <X size={14} className="text-gray-500" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button title="Voice call (coming soon)"
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all duration-200"
+                    onClick={() => toast('Voice calls coming soon.', { className: 'gv-toast', icon: '📞' })}>
+                    <Phone size={15} className="text-white" />
+                  </button>
+                  <button title="Video call (coming soon)"
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all duration-200"
+                    onClick={() => toast('Video calls coming soon.', { className: 'gv-toast', icon: '🎥' })}>
+                    <Video size={15} className="text-white" />
+                  </button>
+                  <button title={isFullScreen ? 'Exit full screen' : 'Full screen'}
+                    onClick={() => setIsFullScreen(f => !f)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all duration-200">
+                    {isFullScreen ? <Minimize2 size={15} className="text-white" /> : <Maximize2 size={15} className="text-white" />}
+                  </button>
+                  <button onClick={onClose}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all duration-200 ml-1">
+                    <X size={15} className="text-white" />
+                  </button>
+                </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50/50" style={{ scrollbarWidth: 'thin' }}>
+              {/* ── Messages area with WhatsApp-style wallpaper ── */}
+              <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4" style={{
+                scrollbarWidth: 'thin',
+                background: 'linear-gradient(160deg, #FFFBEB 0%, #FEF3C7 50%, #FFFBEB 100%)'
+              }}>
                 {loading && messages.length === 0 ? (
                   <div className="flex items-center justify-center py-12"><Loader2 size={24} className="text-brand-500 animate-spin" /></div>
                 ) : messages.length === 0 ? (
@@ -361,11 +498,13 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
 
                   return (
                     <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        isMine ? 'bg-brand-500 text-white rounded-br-md' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-md shadow-sm'
-                      }`}>
+                      <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                        isMine
+                          ? 'text-white rounded-tr-sm'
+                          : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
+                      }`} style={isMine ? { background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' } : {}}>
                         <p>{parsed.text || msg.Content}</p>
-                        <p className={`text-[10px] mt-1 ${isMine ? 'text-white/60' : 'text-gray-400'}`}>{time}</p>
+                        <p className={`text-[10px] mt-1 text-right ${isMine ? 'text-white/60' : 'text-gray-400'}`}>{time}</p>
                       </div>
                     </div>
                   );
@@ -377,7 +516,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
               {showProposalForm && (
                 <div className="px-4 py-4 border-t border-gray-100 bg-gradient-to-b from-brand-50/40 to-white space-y-3 animate-slide-up">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-gray-700 flex items-center gap-1.5"><FileText size={12} className="text-brand-500" /> Send Custom Proposal</p>
+                    <p className="text-xs font-bold text-gray-700 flex items-center gap-1.5"><FileText size={12} className="text-amber-500" /> Send Deal Proposal</p>
                     <button onClick={() => setShowProposalForm(false)} className="text-xs text-gray-400 hover:text-gray-600"><X size={14} /></button>
                   </div>
                   <div className="space-y-1.5">
@@ -410,21 +549,108 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                 </div>
               )}
 
-              {/* Message Input */}
-              <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0">
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setShowProposalForm(!showProposalForm)} title="Send a custom proposal"
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${showProposalForm ? 'bg-brand-500 text-white shadow-brand' : 'bg-gray-100 text-gray-400 hover:bg-brand-50 hover:text-brand-500'}`}>
-                    <FileText size={16} />
-                  </button>
-                  <div className="flex-1 relative">
-                    <input type="text" value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={handleKeyDown}
-                      placeholder="Type a message..." className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 focus:outline-none transition-all" />
+              {/* ── WhatsApp-Level Input Bar ── */}
+              <div className="px-4 py-4 shrink-0" style={{ background: '#f8f9fa', borderTop: '1px solid #e5e7eb' }}>
+
+                {/* Voice Recording indicator */}
+                {isRecording && (
+                  <div className="flex items-center gap-3 mb-3 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 animate-pulse">
+                    <StopCircle size={16} className="text-red-500 shrink-0" />
+                    <span className="text-sm font-bold text-red-600">Recording...</span>
+                    <span className="text-sm font-mono text-red-500 ml-auto">{formatRecordTime(recordSeconds)}</span>
+                    <button onClick={handleCancelRecording}
+                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors">
+                      Cancel
+                    </button>
                   </div>
-                  <button onClick={handleSend} disabled={!msgInput.trim() || sending}
-                    className="w-9 h-9 rounded-xl bg-brand-500 hover:bg-brand-600 flex items-center justify-center text-white shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-                    {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  </button>
+                )}
+
+                {/* Voice note preview */}
+                {audioUrl && !isRecording && (
+                  <div className="flex items-center gap-3 mb-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
+                    <Play size={16} className="text-amber-600 shrink-0" />
+                    <audio src={audioUrl} controls className="flex-1 h-8" style={{ maxWidth: '100%' }} />
+                    <button onClick={handleSendVoiceNote} disabled={sending}
+                      className="px-4 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}>
+                      {sending ? 'Sending...' : 'Send'}
+                    </button>
+                    <button onClick={() => { setAudioUrl(null); setRecordSeconds(0); }}
+                      className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-300 transition-colors">
+                      Discard
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2">
+
+                  {/* Left action cluster: Proposal + Emoji + Attach */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setShowProposalForm(!showProposalForm)}
+                      title="Send Deal Proposal"
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${
+                        showProposalForm
+                          ? 'text-white shadow-brand'
+                          : 'text-gray-500 hover:text-brand-500 hover:bg-brand-50'
+                      }`}
+                      style={showProposalForm ? { background: 'linear-gradient(135deg,#F59E0B,#D97706)' } : {}}>
+                      <FileText size={18} />
+                    </button>
+                    <button
+                      title="Media & Files"
+                      onClick={handleMediaUpload}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-brand-500 hover:bg-brand-50 transition-all duration-200">
+                      <FolderOpen size={18} />
+                    </button>
+                    <button
+                      title="Camera"
+                      onClick={handleCamera}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-brand-500 hover:bg-brand-50 transition-all duration-200">
+                      <Camera size={18} />
+                    </button>
+                  </div>
+
+                  {/* Text input */}
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={msgInput}
+                      onChange={e => setMsgInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={isRecording ? 'Recording voice message...' : 'Type a message...'}
+                      disabled={isRecording || !!audioUrl}
+                      className="w-full rounded-3xl border border-gray-200 bg-white px-5 py-3 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 focus:outline-none transition-all disabled:opacity-50 shadow-sm"
+                    />
+                    <button
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors"
+                      title="Emoji"
+                      onClick={() => toast('Emoji picker coming soon.', { className: 'gv-toast', icon: '😊' })}>
+                      <Smile size={16} />
+                    </button>
+                  </div>
+
+                  {/* Right action: Send OR Mic */}
+                  {msgInput.trim() ? (
+                    <button
+                      onClick={handleSend}
+                      disabled={sending}
+                      title="Send message"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0 transition-all duration-200 disabled:opacity-40 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                      style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
+                      {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleMicToggle}
+                      title={isRecording ? 'Stop recording' : 'Record voice message'}
+                      className={`w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0 transition-all duration-300 shadow-sm ${
+                        isRecording ? 'animate-pulse' : 'hover:-translate-y-0.5 hover:shadow-brand-lg'
+                      }`}
+                      style={{ background: isRecording ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
+                      {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+                    </button>
+                  )}
                 </div>
               </div>
             </>
@@ -437,6 +663,21 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
           from { transform: translateX(100%); opacity: 0; }
           to   { transform: translateX(0);    opacity: 1; }
         }
+        /* WhatsApp-style message tail for sent messages */
+        .msg-sent::after {
+          content: '';
+          position: absolute;
+          right: -6px;
+          top: 10px;
+          border-width: 6px 0 6px 8px;
+          border-style: solid;
+          border-color: transparent transparent transparent #F59E0B;
+        }
+        /* Thin branded scrollbar for chat area */
+        .chat-scroll::-webkit-scrollbar { width: 4px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.25); border-radius: 2px; }
+        .chat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(245,158,11,0.45); }
       `}</style>
     </div>
   );

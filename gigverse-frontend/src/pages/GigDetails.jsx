@@ -1,10 +1,10 @@
 // src/pages/GigDetails.jsx — Single Gig View + Premium Escrow Payment Gateway
+// Updated: "Contact for Custom Work" now opens Gmail Web Compose (fixes Outlook bug)
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Zap, Star, Clock, ShieldCheck, AlertCircle, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
+import { Zap, Star, Clock, ShieldCheck, AlertCircle, CheckCircle2, ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { gigAPI, orderAPI } from '../lib/api';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
-import ChatDrawer from '../components/ChatDrawer';
 
 export default function GigDetails() {
   const { id } = useParams();
@@ -19,7 +19,6 @@ export default function GigDetails() {
   // Payment Gateway Modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState(null);
-  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => { fetchGig(); }, [id]);
 
@@ -53,6 +52,34 @@ export default function GigDetails() {
   const handlePaymentSuccess = () => {
     setOrderSuccess('Order placed successfully! Payment is held in secure escrow.');
     setShowPaymentModal(false);
+  };
+
+  // ── Build Gmail Web Compose URL (bypasses broken native Outlook on Windows) ──
+  const buildGmailComposeUrl = () => {
+    if (!gig) return '#';
+
+    let clientName = 'A GigVerse Client';
+    try {
+      const stored = JSON.parse(localStorage.getItem('gv_user') || '{}');
+      if (stored.Name) clientName = stored.Name;
+    } catch { /* fallback */ }
+
+    const contributorName = gig.ContributorName || 'Contributor';
+    const contributorEmail = gig.UiuEmail || '';
+
+    // Use Vite env variable for production-safe URL; fallback to current origin
+    const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+
+    const subject = `[GigVerse Custom Project Request] - ${clientName}`;
+    const body = `Dear ${contributorName},\n\nI recently viewed your profile on GigVerse and am very impressed with your offerings. I would like to initiate a conversation for a customized project with you.\n\nPlease click this link to access our secure workspace and accept the conversation request: ${frontendUrl}/dashboard/messages?initiate=true\n\nBest regards,\n${clientName}`;
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contributorEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleContactCustomWork = () => {
+    if (!localStorage.getItem('gv_token')) { navigate('/auth'); return; }
+    // Open Gmail Web Compose in a new tab
+    window.open(buildGmailComposeUrl(), '_blank', 'noopener,noreferrer');
   };
 
   if (loading) return (<div className="min-h-[70vh] flex items-center justify-center"><Loader2 size={36} className="text-brand-500 animate-spin" /></div>);
@@ -127,14 +154,11 @@ export default function GigDetails() {
                 </button>
 
                 <button
-                  onClick={() => {
-                    if (!localStorage.getItem('gv_token')) { navigate('/auth'); return; }
-                    setShowChat(true);
-                  }}
+                  onClick={handleContactCustomWork}
                   className="w-full !py-3.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 text-white shadow-lg mb-4 hover:opacity-90"
                   style={{ backgroundColor: '#f26522' }}
                 >
-                  Contact for Custom Work
+                  <Mail size={16} /> Contact for Custom Work
                 </button>
 
                 {orderSuccess && <Link to="/orders" className="btn-secondary w-full !py-2.5 text-sm text-center block">View My Orders</Link>}
@@ -160,13 +184,6 @@ export default function GigDetails() {
           amount: gig.BasePrice,
         } : null}
         onSuccess={handlePaymentSuccess}
-      />
-
-      {/* Chat Drawer */}
-      <ChatDrawer
-        isOpen={showChat}
-        onClose={() => setShowChat(false)}
-        targetUser={gig ? { UserID: gig.ContributorID, Name: gig.ContributorName, ProfilePicUrl: null } : null}
       />
     </>
   );
