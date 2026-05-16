@@ -3,24 +3,31 @@
 require('dotenv').config();
 
 const express = require('express');
-const cors    = require('cors');
+const cors = require('cors');
 
-const authRoutes      = require('./routes/auth.routes');
-const userRoutes      = require('./routes/user.routes');
-const searchRoutes    = require('./routes/search.routes');
-const orderRoutes     = require('./routes/order.routes');
-const reviewRoutes    = require('./routes/review.routes');
-const gigRoutes       = require('./routes/gig.routes');
+const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
+const searchRoutes = require('./routes/search.routes');
+const orderRoutes = require('./routes/order.routes');
+const reviewRoutes = require('./routes/review.routes');
+const gigRoutes = require('./routes/gig.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
-const aiRoutes        = require('./routes/ai.routes');
-const paymentRoutes        = require('./routes/payment.routes');
-const notificationRoutes   = require('./routes/notification.routes');
-const messageRoutes        = require('./routes/message.routes');
+const aiRoutes = require('./routes/ai.routes');
+const paymentRoutes = require('./routes/payment.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const messageRoutes = require('./routes/message.routes');
 
 const app = express();
 
 // ── Global Middleware ─────────────────────────────────────────────────────────
-app.use(cors());
+// --- Global Middleware ---
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://gigverse-uiu.vercel.app'
+  ],
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -30,17 +37,17 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',      authRoutes);
-app.use('/api/users',     userRoutes);
-app.use('/api/search',    searchRoutes);
-app.use('/api/orders',    orderRoutes);
-app.use('/api/reviews',   reviewRoutes);
-app.use('/api/gigs',      gigRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/gigs', gigRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/ai',        aiRoutes);
-app.use('/api/payments',       paymentRoutes);
-app.use('/api/notifications',  notificationRoutes);
-app.use('/api/messages',       messageRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/messages', messageRoutes);
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
