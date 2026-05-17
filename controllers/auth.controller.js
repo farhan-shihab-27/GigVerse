@@ -133,6 +133,7 @@ function buildOtpEmail(name, otp) {
 
 // ── POST /api/auth/request-otp ───────────────────────────────────────────────
 exports.requestOtp = async (req, res, next) => {
+  console.log('\n🔬 INCOMING OTP-REQUEST PAYLOAD:', JSON.stringify(req.body, null, 2));
   try {
     const {
       name, uiuId, email, whatsAppNumber, password,
@@ -158,10 +159,23 @@ exports.requestOtp = async (req, res, next) => {
     }
 
     // ── Duplicate check ──────────────────────────────────────────
-    const [existing] = await pool.query(
-      'SELECT UserID FROM Users WHERE UiuEmail = ? OR PersonalEmail = ? OR (UiuId = ? AND UiuId IS NOT NULL)',
-      [resolvedEmail, resolvedEmail, uiuId || null],
-    );
+    let existing;
+    try {
+      console.log('[DEBUG] Running duplicate check for:', resolvedEmail, uiuId);
+      [existing] = await pool.query(
+        'SELECT UserID FROM Users WHERE UiuEmail = ? OR PersonalEmail = ? OR (UiuId = ? AND UiuId IS NOT NULL)',
+        [resolvedEmail, resolvedEmail, uiuId || null],
+      );
+      console.log('[DEBUG] Duplicate check result:', existing.length, 'matches');
+    } catch (dupErr) {
+      console.error('🚨 SIGNUP CRASH REASON (duplicate check SELECT):', dupErr);
+      return res.status(500).json({
+        error: 'Registration Failed',
+        details: dupErr.message,
+        sqlMessage: dupErr.sqlMessage || null,
+        code: dupErr.code || null,
+      });
+    }
     if (existing.length > 0) {
       return res.status(409).json({
         success: false,
@@ -238,12 +252,19 @@ exports.requestOtp = async (req, res, next) => {
 
     return res.status(200).json({ success: true, message: 'Verification code sent to your email.' });
   } catch (err) {
-    next(err);
+    console.error('🚨 SIGNUP CRASH REASON (requestOtp outer):', err);
+    return res.status(500).json({
+      error: 'Registration Failed',
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      stack: err.stack || null,
+    });
   }
 };
 
 // ── POST /api/auth/verify-otp ────────────────────────────────────────────────
 exports.verifyOtp = async (req, res, next) => {
+  console.log('\n🔬 INCOMING VERIFY-OTP PAYLOAD:', JSON.stringify(req.body, null, 2));
   try {
     const resolvedEmail = (req.body.email || req.body.uiuEmail || '').toLowerCase().trim();
 
@@ -335,7 +356,13 @@ exports.verifyOtp = async (req, res, next) => {
       data:    { userId: result.insertId },
     });
   } catch (err) {
-    next(err);
+    console.error('🚨 SIGNUP CRASH REASON (verifyOtp outer):', err);
+    return res.status(500).json({
+      error: 'Registration Failed',
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      stack: err.stack || null,
+    });
   }
 };
 

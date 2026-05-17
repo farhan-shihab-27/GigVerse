@@ -1,4 +1,4 @@
-// ── GigVerse — Gig Controller (Full CRUD) ───────────────────────────────────
+// ── GigVerse — Gig Controller (Full CRUD + Soft Delete) ─────────────────────
 // Secure: createGig uses JWT userId, not body. Edit/Delete scoped to owner only.
 const pool = require('../database/db');
 
@@ -101,7 +101,8 @@ exports.updateGig = async (req, res, next) => {
   }
 };
 
-// ── Delete Gig (Owner Only — blocks if active orders exist) ─────────────────
+// ── Delete Gig (Owner Only — SOFT DELETE) ───────────────────────────────────
+// Instead of hard DELETE, sets Status = 'deleted' to preserve FK integrity.
 exports.deleteGig = async (req, res, next) => {
   try {
     const gigId  = req.params.id;
@@ -116,21 +117,8 @@ exports.deleteGig = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'You can only delete your own gigs.' });
     }
 
-    // Check for active orders linked to this gig
-    const [[{ activeCount }]] = await pool.query(
-      `SELECT COUNT(*) AS activeCount FROM Orders
-       WHERE GigID = ? AND OrderStatus NOT IN ('Completed', 'Cancelled')`,
-      [gigId]
-    );
-    if (activeCount > 0) {
-      return res.status(409).json({
-        success: false,
-        message: `Cannot delete this gig — ${activeCount} active order(s) are linked to it.`,
-      });
-    }
-
-    // Safe to delete (cascades to Gig_Images via FK)
-    await pool.query('DELETE FROM Gigs WHERE GigID = ?', [gigId]);
+    // Soft delete — mark as 'deleted' instead of removing the row
+    await pool.query("UPDATE Gigs SET Status = 'deleted' WHERE GigID = ?", [gigId]);
 
     return res.json({ success: true, message: 'Gig deleted successfully.' });
   } catch (err) {
@@ -138,7 +126,7 @@ exports.deleteGig = async (req, res, next) => {
   }
 };
 
-// ── Get My Gigs (Authenticated — all gigs by logged-in user) ────────────────
+// ── Get My Gigs (Authenticated — excludes soft-deleted) ─────────────────────
 exports.getMyGigs = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -149,6 +137,7 @@ exports.getMyGigs = async (req, res, next) => {
        FROM Gigs g
        LEFT JOIN Gig_Images gi ON gi.GigID = g.GigID AND gi.IsPrimary = TRUE
        WHERE g.ContributorID = ?
+         AND (g.Status IS NULL OR g.Status != 'deleted')
        ORDER BY g.CreatedAt DESC`,
       [userId]
     );
@@ -159,7 +148,7 @@ exports.getMyGigs = async (req, res, next) => {
   }
 };
 
-// ── Get Single Gig ──────────────────────────────────────────────────────────
+// ── Get Single Gig (excludes soft-deleted) ──────────────────────────────────
 exports.getGig = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -167,7 +156,8 @@ exports.getGig = async (req, res, next) => {
        FROM Gigs g 
        JOIN Users u ON g.ContributorID = u.UserID 
        LEFT JOIN User_Private_Info p ON u.UserID = p.UserID
-       WHERE g.GigID = ?`,
+       WHERE g.GigID = ?
+         AND (g.Status IS NULL OR g.Status != 'deleted')`,
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Gig not found.' });
@@ -175,15 +165,18 @@ exports.getGig = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Get Gigs by Contributor (Public) ────────────────────────────────────────
+// ── Get Gigs by Contributor (Public — excludes soft-deleted) ────────────────
 exports.getGigsByContributor = async (req, res, next) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM Gigs WHERE ContributorID = ?', [req.params.userId]);
+    const [rows] = await pool.query(
+      "SELECT * FROM Gigs WHERE ContributorID = ? AND (Status IS NULL OR Status != 'deleted')",
+      [req.params.userId]
+    );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 };
 
-// ── Get All Gigs (Public Feed) ──────────────────────────────────────────────
+// ── Get All Gigs (Public Feed — excludes soft-deleted) ──────────────────────
 exports.getAllGigs = async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 50);
@@ -204,6 +197,7 @@ exports.getAllGigs = async (req, res, next) => {
        JOIN Roles       r  ON u.RoleID        = r.RoleID
        JOIN Departments d  ON u.DeptID        = d.DeptID
        LEFT JOIN Gig_Images gi ON gi.GigID = g.GigID AND gi.IsPrimary = TRUE
+       WHERE (g.Status IS NULL OR g.Status != 'deleted')
        ORDER BY g.CreatedAt DESC
        LIMIT ? OFFSET ?`,
       [limit, offset]

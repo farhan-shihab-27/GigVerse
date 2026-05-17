@@ -1,16 +1,17 @@
 // src/components/Navbar.jsx — Full-width, properly aligned navigation
 // Integrates the glassmorphic NotificationBell component.
+// Search bar now uses the reusable DynamicSearch component for live suggestions.
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Search, Zap, Menu, X, LogIn, UserPlus,
+  Zap, Menu, X, LogIn, UserPlus,
   User, LogOut, Trophy, Home, ClipboardList
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
+import DynamicSearch from './DynamicSearch';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
   const [userName, setUserName]       = useState('');
   const [profilePic, setProfilePic]   = useState('');
@@ -34,11 +35,6 @@ export default function Navbar() {
     localStorage.removeItem('gv_user');
     setIsLoggedIn(false); setUserName('');
     navigate('/auth');
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) navigate(`/search?skill=${encodeURIComponent(searchQuery)}`);
   };
 
   const initials = (userName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -66,22 +62,12 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Search bar — flex-1 pushes nav links to the right */}
-        <form onSubmit={handleSearch}
-          className="flex-1 max-w-lg flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 hover:border-brand-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 transition-all duration-200">
-          <Search size={15} className="text-gray-400 shrink-0" />
-          <input
-            id="navbar-search" type="text" value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder='Search gigs, skills, contributors...'
-            className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
-          />
-          {searchQuery && (
-            <button type="button" onClick={() => setSearchQuery('')} className="text-gray-300 hover:text-gray-500">
-              <X size={12} />
-            </button>
-          )}
-        </form>
+        {/* Search bar — DynamicSearch replaces the dead input */}
+        <DynamicSearch
+          className="flex-1 max-w-lg"
+          compact={true}
+          placeholder="Search gigs, skills, contributors..."
+        />
 
         {/* Spacer keeps nav links at the far right */}
         <div className="flex-1" />
@@ -145,11 +131,9 @@ export default function Navbar() {
       {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3 animate-slide-up">
-          <form onSubmit={handleSearch} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
-            <Search size={14} className="text-gray-400 shrink-0" />
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search gigs..." className="flex-1 bg-transparent text-sm focus:outline-none placeholder-gray-400" />
-          </form>
+          {/* DynamicSearch for mobile drawer too */}
+          <DynamicSearch compact={true} placeholder="Search gigs..." />
+
           <div className="flex flex-col gap-1">
             {[{ to:'/home', icon:Home, label:'Home' }, { to:'/leaderboard', icon:Trophy, label:'Leaderboard' }].map(({to,icon:Icon,label}) => (
               <Link key={to} to={to} onClick={() => setMobileOpen(false)}
