@@ -69,6 +69,16 @@ if (!process.env.VERCEL) {
   });
 }
 
+// ── Global Process Crash Protectors ───────────────────────────────────────────
+// Catch async DB pool drops, unhandled promise rejections, and any uncaught
+// exceptions that would otherwise kill the process silently.
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+});
+
 // Vercel Serverless Functions require the Express app to be exported.
 // This is also harmless for local dev (Node ignores unused exports).
 module.exports = app;

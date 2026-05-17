@@ -290,18 +290,42 @@ exports.verifyOtp = async (req, res, next) => {
       // generatedBio stays as default — registration continues unaffected
     }
 
-    const [result] = await pool.query(
-      `INSERT INTO Users
-         (RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail, PasswordHash, DOB, Bio)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [roleId, safeDeptId, name, uiuId || null, uiuEmail, personalEmail, passwordHash, dob || null, generatedBio],
-    );
+    // ── CRITICAL DB INSERTION — wrapped for deep error tracking ──
+    let result;
+    try {
+      [result] = await pool.query(
+        `INSERT INTO Users
+           (RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail, PasswordHash, DOB, Bio)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [roleId, safeDeptId, name, uiuId || null, uiuEmail, personalEmail, passwordHash, dob || null, generatedBio],
+      );
+      console.log('[AUTH] User inserted with ID:', result.insertId);
+    } catch (dbErr) {
+      console.error('CRITICAL DB INSERTION ERROR (Users table):', dbErr);
+      return res.status(500).json({
+        success: false,
+        message: dbErr.message,
+        sqlState: dbErr.sqlState || null,
+        code: dbErr.code || null,
+      });
+    }
 
-    await pool.query(
-      `INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails)
-       VALUES (?, ?, NULL, NULL)`,
-      [result.insertId, whatsAppNumber || null],
-    );
+    try {
+      await pool.query(
+        `INSERT INTO User_Private_Info (UserID, WhatsAppNumber, BkashNumber, BankAccountDetails)
+         VALUES (?, ?, NULL, NULL)`,
+        [result.insertId, whatsAppNumber || null],
+      );
+      console.log('[AUTH] User_Private_Info inserted for UserID:', result.insertId);
+    } catch (dbErr) {
+      console.error('CRITICAL DB INSERTION ERROR (User_Private_Info table):', dbErr);
+      return res.status(500).json({
+        success: false,
+        message: dbErr.message,
+        sqlState: dbErr.sqlState || null,
+        code: dbErr.code || null,
+      });
+    }
 
     otpStore.delete(resolvedEmail);
 

@@ -10,7 +10,7 @@ const API_BASE = 'https://gigverse-tujt.onrender.com/api';
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 60000,
+  // No timeout — wait indefinitely for Render cold starts, DB queries, and email handshakes
 });
 
 // ── Request interceptor: attach JWT to every request ──────────────────────────
