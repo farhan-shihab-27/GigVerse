@@ -10,6 +10,7 @@ const bcrypt      = require('bcrypt');
 const jwt         = require('jsonwebtoken');
 const pool        = require('../database/db');
 const nodemailer  = require('nodemailer');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const SALT_ROUNDS = 12;
 const JWT_SECRET  = process.env.JWT_SECRET  || 'change_me_to_a_long_random_string';
@@ -24,11 +25,14 @@ function createTransporter() {
   // to a console-only mode so the server still boots in dev without .env creds.
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS, // 16-char Gmail App Password
       },
+      tls: { rejectUnauthorized: false },
     });
   }
 
@@ -263,11 +267,34 @@ exports.verifyOtp = async (req, res, next) => {
     // Clamp deptId to valid DB range (1–18)
     const safeDeptId = (Number(deptId) >= 1 && Number(deptId) <= 18) ? Number(deptId) : 1;
 
+    // ── Gemini AI: Generate personalized welcome bio (graceful degradation) ──
+    let generatedBio = 'Welcome to GigVerse!';
+    try {
+      if (process.env.GEMINI_API_KEY) {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const aiResult = await model.generateContent({
+          contents: [{
+            role: 'user',
+            parts: [{ text: `Write a short, friendly one-sentence welcome bio (max 120 chars) for a new university freelance platform member named "${name}". No quotes around the output.` }],
+          }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 60 },
+        });
+        const aiText = aiResult.response.text().trim();
+        if (aiText && aiText.length > 0 && aiText.length <= 200) {
+          generatedBio = aiText;
+        }
+      }
+    } catch (aiErr) {
+      console.warn('[AUTH] Gemini AI bio generation failed (non-blocking):', aiErr.message);
+      // generatedBio stays as default — registration continues unaffected
+    }
+
     const [result] = await pool.query(
       `INSERT INTO Users
          (RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail, PasswordHash, DOB, Bio)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [roleId, safeDeptId, name, uiuId || null, uiuEmail, personalEmail, passwordHash, dob || null, 'New member of GigVerse'],
+      [roleId, safeDeptId, name, uiuId || null, uiuEmail, personalEmail, passwordHash, dob || null, generatedBio],
     );
 
     await pool.query(

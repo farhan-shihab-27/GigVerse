@@ -36,12 +36,26 @@ const pool = mysql.createPool({
   charset: 'utf8mb4',            // full Unicode support
 });
 
-// Connection Verification
+// Connection Verification + Safe Auto-Migration
 (async () => {
   try {
     const conn = await pool.getConnection();
     console.log('✅  MySQL pool connected to Aiven (SSL verified)');
     conn.release();
+
+    // ── Safe DB Migration: Ensure Notifications.Type column exists ───────────
+    try {
+      await pool.query(
+        `ALTER TABLE Notifications ADD COLUMN Type VARCHAR(50) DEFAULT 'general'`
+      );
+      console.log('✅  DB Migration: Notifications.Type column added.');
+    } catch (migrationErr) {
+      if (migrationErr.code === 'ER_DUP_FIELDNAME' || migrationErr.errno === 1060) {
+        console.log('✅  DB structure verified.');
+      } else {
+        console.warn('⚠️  DB Migration warning:', migrationErr.message);
+      }
+    }
   } catch (err) {
     console.error('❌  MySQL connection failed:', err.message);
   }
