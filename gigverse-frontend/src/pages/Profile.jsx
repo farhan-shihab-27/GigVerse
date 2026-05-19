@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   User, Mail, Phone, CreditCard, Award, Star, Edit3, Save,
   X, Zap, Calendar, FileText, Shield, CheckCircle2, AlertCircle,
-  Loader2, ClipboardList, Trash2, RefreshCw, Briefcase, Plus, Pencil, ImageOff
+  Loader2, ClipboardList, Trash2, RefreshCw, Briefcase, Plus, Pencil, ImageOff, Wallet
 } from 'lucide-react';
 import { userAPI, gigAPI } from '../lib/api';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -203,27 +203,47 @@ export default function Profile() {
         </div>
 
         {/* PVP STATS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="card p-5 text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center mx-auto mb-3"><Award size={24} className="text-brand-500" /></div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <Link to="/wallet"
+            className="card p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:border-brand-200 cursor-pointer transition-all duration-200 group">
+            <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-brand-100 transition-colors"><Award size={24} className="text-brand-500" /></div>
             <p className="text-3xl font-extrabold text-gray-900">{profile.PVP_Points ?? 0}</p>
-            <p className="text-xs text-gray-400 mt-1">PVP Points</p>
-          </div>
-          <div className="card p-5 text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-3"><Star size={24} className="text-amber-500" /></div>
+            <p className="text-xs text-gray-400 mt-1 group-hover:text-brand-500 transition-colors">PVP Points</p>
+          </Link>
+          <Link to="/leaderboard"
+            className="card p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:border-amber-200 cursor-pointer transition-all duration-200 group">
+            <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-amber-100 transition-colors"><Star size={24} className="text-amber-500" /></div>
             <p className="text-3xl font-extrabold text-gray-900">{Number(profile.AverageRating || 0).toFixed(1)}</p>
-            <p className="text-xs text-gray-400 mt-1">Avg. Rating</p>
-          </div>
-          <div className="card p-5 text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3"><Shield size={24} className="text-green-500" /></div>
+            <p className="text-xs text-gray-400 mt-1 group-hover:text-amber-500 transition-colors">Avg. Rating</p>
+          </Link>
+          <a href="#profile-skills"
+            className="card p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:border-green-200 cursor-pointer transition-all duration-200 group">
+            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-green-100 transition-colors"><Shield size={24} className="text-green-500" /></div>
             <p className="text-3xl font-extrabold text-gray-900">{profile.skills?.length || 0}</p>
-            <p className="text-xs text-gray-400 mt-1">Skills</p>
-          </div>
+            <p className="text-xs text-gray-400 mt-1 group-hover:text-green-500 transition-colors">Skills</p>
+          </a>
+          {/* Escrow Wallet Balance — credited on each approved milestone */}
+          <Link to="/wallet"
+            className="card p-5 text-center hover:-translate-y-1 hover:shadow-lg cursor-pointer transition-all duration-200 relative overflow-hidden group">
+            {/* Subtle green shimmer background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 to-green-50/30 pointer-events-none" />
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md shadow-emerald-200 group-hover:shadow-emerald-300 transition-all">
+                <Wallet size={22} className="text-white" />
+              </div>
+              <p className="text-2xl font-extrabold text-emerald-700">
+                ৳{Number(profile.WalletBalance || 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-400 mt-1 group-hover:text-emerald-500 transition-colors">Escrow Wallet</p>
+              <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">Milestone earnings</p>
+            </div>
+          </Link>
         </div>
+
 
         {/* SKILLS */}
         {Array.isArray(profile.skills) && profile.skills.length > 0 && (
-          <div className="card p-6 mb-6">
+          <div id="profile-skills" className="card p-6 mb-6">
             <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><Zap size={15} className="text-brand-500" /> Skills</h3>
             <div className="flex flex-wrap gap-2">
               {profile.skills.map(s => (

@@ -248,8 +248,17 @@ exports.approveMilestone = async (req, res, next) => {
       [newEscrowReleased, step, orderId]
     );
 
-    // Award PVP points per milestone (4 per step)
-    await conn.query('UPDATE Users SET PVP_Points = PVP_Points + 4 WHERE UserID = ?', [order.ContributorID]);
+    // Award PVP points per milestone (4 per step) AND credit WalletBalance (simulated escrow release)
+    await conn.query(
+      'UPDATE Users SET PVP_Points = PVP_Points + 4, WalletBalance = WalletBalance + ? WHERE UserID = ?',
+      [releaseTaka, order.ContributorID]
+    );
+
+    // Fetch updated wallet balance for response
+    const [[contributor]] = await conn.query(
+      'SELECT WalletBalance FROM Users WHERE UserID = ?',
+      [order.ContributorID]
+    );
 
     // If all 4 milestones are released, mark order as Completed
     const [allMs] = await conn.query(
@@ -284,7 +293,7 @@ exports.approveMilestone = async (req, res, next) => {
     return res.json({
       success: true,
       message: `Milestone ${step} approved. ৳${releaseTaka.toLocaleString()} released.`,
-      data: { orderId: Number(orderId), step, releaseTaka, txnId, totalReleased: newEscrowReleased },
+      data: { orderId: Number(orderId), step, releaseTaka, txnId, totalReleased: newEscrowReleased, walletBalance: Number(contributor?.WalletBalance || 0) },
     });
   } catch (err) {
     await conn.rollback();

@@ -27,11 +27,18 @@ function createTransporter() {
     return nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
-      secure: true,
+      secure: true,               // SSL on port 465
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS, // 16-char Gmail App Password
       },
+      pool: true,                   // Reuse connections for throughput
+      maxConnections: 3,
+      maxMessages: 50,
+      connectionTimeout: 30_000,    // 30 s to establish TCP connection
+      greetingTimeout:   30_000,    // 30 s for SMTP greeting
+      socketTimeout:     60_000,    // 60 s for socket inactivity
+      family: 4,                    // Force IPv4 (avoids IPv6 issues on some hosts)
       tls: { rejectUnauthorized: false },
     });
   }
@@ -229,25 +236,34 @@ exports.requestOtp = async (req, res, next) => {
       userData: { name, uiuId, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob },
     });
 
-    // ── Send email ───────────────────────────────────────────────
+    // ── Send email (BLOCKING — must confirm dispatch before responding) ────
     const transporter = createTransporter();
-    if (transporter) {
-      const { subject, html } = buildOtpEmail(name, otp);
-      try {
-        await transporter.sendMail({
-          from: `"GigVerse Platform" <${process.env.SMTP_USER}>`,
-          to:   resolvedEmail,
-          subject,
-          html,
-        });
-        console.log(`[OTP] Email sent to ${resolvedEmail}`);
-      } catch (mailErr) {
-        console.error('[OTP] Email delivery failed:', mailErr.message);
-        // Don't block the user — still log the OTP
-      }
+    if (!transporter) {
+      console.error('🚨 NODEMAILER SMTP ERROR: Transporter is null — SMTP_USER / SMTP_PASS not configured.');
+      // Still log OTP for local dev debugging
+      console.log(`[OTP-DEV] ${resolvedEmail} → ${otp}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Email service is not configured. Please contact support.',
+      });
     }
 
-    // Always log in dev for easy testing
+    const { subject, html } = buildOtpEmail(name, otp);
+    try {
+      const info = await transporter.sendMail({
+        from: `"GigVerse Platform" <${process.env.SMTP_USER}>`,
+        to:   resolvedEmail,
+        subject,
+        html,
+      });
+      console.log(`[OTP] Email dispatched to ${resolvedEmail} — SMTP response: ${info.response}`);
+    } catch (mailErr) {
+      console.error('🚨 NODEMAILER SMTP ERROR:', mailErr);
+      // Aggressive propagation — throw so the outer catch returns 500
+      throw mailErr;
+    }
+
+    // Log OTP to console for dev convenience (email was confirmed sent above)
     console.log(`[OTP] ${resolvedEmail} → ${otp}`);
 
     return res.status(200).json({ success: true, message: 'Verification code sent to your email.' });

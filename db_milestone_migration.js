@@ -93,7 +93,21 @@ async function runMigration() {
       }
     }
 
-    // ── 4. Ensure OrderRevisions table exists ─────────────────────────────────
+    // ── 4. Add WalletBalance column to Users (simulated escrow wallet) ────────
+    try {
+      await connection.query(
+        `ALTER TABLE Users ADD COLUMN WalletBalance DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER PVP_Points`
+      );
+      console.log('  ✓ Added column to Users: WalletBalance');
+    } catch (err) {
+      if (err.code === 'ER_DUP_FIELDNAME') {
+        console.log('  → Users.WalletBalance already exists, skipping.');
+      } else {
+        console.error('  ✗ Error adding Users.WalletBalance:', err.message);
+      }
+    }
+
+    // ── 5. Ensure OrderRevisions table exists ─────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS OrderRevisions (
         RevisionID   INT       AUTO_INCREMENT PRIMARY KEY,

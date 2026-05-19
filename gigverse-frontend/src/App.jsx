@@ -11,6 +11,7 @@ import OrderDashboard from './pages/OrderDashboard';
 import UserList from './pages/UserList';
 import PublicProfile from './pages/PublicProfile';
 import MessagesPage from './pages/MessagesPage';
+import WalletPage from './pages/WalletPage';
 
 const isAuthenticated = () => Boolean(localStorage.getItem('gv_token'));
 function PrivateRoute({ children }) { return isAuthenticated() ? children : <Navigate to="/auth" replace />; }
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/orders" element={<PrivateRoute><Navbar /><OrderDashboard /></PrivateRoute>} />
         {/* Advanced Messaging Hub — receives ?initiate=true from email magic link */}
         <Route path="/dashboard/messages" element={<PrivateRoute><Navbar /><MessagesPage /></PrivateRoute>} />
+        <Route path="/wallet"  element={<PrivateRoute><Navbar /><WalletPage /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>

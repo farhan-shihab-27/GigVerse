@@ -19,7 +19,7 @@ const NAV = [
   { icon: Briefcase,       label: 'Browse Gigs', to: '/search' },
   { icon: MessageSquare,   label: 'Messages',    to: '__chat__' },
   { icon: Trophy,          label: 'Leaderboard', to: '/leaderboard' },
-  { icon: Wallet,          label: 'PVP Wallet',  to: '/home' },
+  { icon: Wallet,          label: 'PVP Wallet',  to: '/wallet' },
 ];
 
 const CATEGORIES = ['All', 'Development', 'Design', 'Writing', 'Marketing', 'Tutoring'];
@@ -145,10 +145,10 @@ export default function WorkspaceHome() {
   ].filter(Boolean).length * 25);
 
   const QUICK_STATS = [
-    { icon: ClipboardList, label: 'Active Orders',      value: myStats?.activeOrders ?? '—', color: '#3b82f6', bg: '#eff6ff' },
-    { icon: Zap,           label: 'Available PVP',      value: profile?.PVP_Points ?? '—', color: '#f26522', bg: '#fff4eb' },
-    { icon: Star,          label: 'Avg. Rating',        value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb' },
-    { icon: ShoppingCart,  label: 'Total Sales',        value: myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—', color: '#10b981', bg: '#f0fdf4' },
+    { icon: ClipboardList, label: 'Active Orders', value: myStats?.activeOrders ?? '—', color: '#3b82f6', bg: '#eff6ff', to: '/orders' },
+    { icon: Zap,           label: 'Available PVP', value: profile?.PVP_Points ?? '—',  color: '#f26522', bg: '#fff4eb', to: '/wallet' },
+    { icon: Star,          label: 'Avg. Rating',   value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb', to: '/leaderboard' },
+    { icon: ShoppingCart,  label: 'Total Sales',   value: myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—', color: '#10b981', bg: '#f0fdf4', to: '/orders' },
   ];
 
   const hasSuggestions = suggestions.skills.length > 0 || suggestions.users.length > 0;
@@ -313,17 +313,20 @@ export default function WorkspaceHome() {
               <p className="text-sm text-gray-400 mt-0.5">Here is your workspace overview for today.</p>
             </div>
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
-              {QUICK_STATS.map(({ icon: Icon, label, value, color, bg }) => (
-                <div key={label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              {QUICK_STATS.map(({ icon: Icon, label, value, color, bg, to }) => (
+                <Link key={label} to={to}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm
+                    hover:shadow-lg hover:-translate-y-1 hover:border-gray-200
+                    cursor-pointer transition-all duration-200 group block">
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
                       <Icon size={16} style={{ color }} />
                     </div>
-                    <ArrowUpRight size={13} className="text-gray-200" />
+                    <ArrowUpRight size={13} className="text-gray-200 group-hover:text-gray-400 transition-colors" />
                   </div>
                   <p className="text-2xl font-extrabold text-gray-900">{value}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-                </div>
+                </Link>
               ))}
             </div>
             {profilePct < 100 && (
@@ -467,14 +470,20 @@ export default function WorkspaceHome() {
                 })()}
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
+                <Link to="/wallet"
+                  className="bg-white rounded-xl p-2.5 border border-gray-100 text-center
+                    hover:border-brand-200 hover:shadow-sm hover:-translate-y-0.5
+                    cursor-pointer transition-all duration-200 group">
                   <p className="text-lg font-extrabold text-brand-500">{profile?.PVP_Points ?? '—'}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">PVP Points</p>
-                </div>
-                <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-400 mt-0.5 group-hover:text-brand-400 transition-colors">PVP Points</p>
+                </Link>
+                <Link to="/leaderboard"
+                  className="bg-white rounded-xl p-2.5 border border-gray-100 text-center
+                    hover:border-amber-200 hover:shadow-sm hover:-translate-y-0.5
+                    cursor-pointer transition-all duration-200 group">
                   <p className="text-lg font-extrabold text-amber-500">{profile ? Number(profile.AverageRating).toFixed(1) : '—'}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Avg Rating</p>
-                </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5 group-hover:text-amber-400 transition-colors">Avg Rating</p>
+                </Link>
               </div>
               {profile?.skills?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 justify-center mt-3">

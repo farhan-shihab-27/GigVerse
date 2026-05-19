@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, Menu, X, LogIn, UserPlus,
-  User, LogOut, Trophy, Home, ClipboardList
+  User, LogOut, Trophy, Home, ClipboardList, Wallet
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import DynamicSearch from './DynamicSearch';
@@ -77,6 +77,7 @@ export default function Navbar() {
           <NavLink to="/home"        icon={Home}          label="Home" />
           <NavLink to="/leaderboard" icon={Trophy}        label="Leaderboard" />
           {isLoggedIn && <NavLink to="/orders" icon={ClipboardList} label="Orders" />}
+          {isLoggedIn && <NavLink to="/wallet" icon={Wallet}        label="Wallet" />}
         </nav>
 
         {isLoggedIn ? (

@@ -196,7 +196,7 @@ exports.getMyProfile = async (req, res, next) => {
 
     const [rows] = await pool.query(
       `SELECT u.UserID, u.Name, u.UiuEmail, u.PersonalEmail,
-              u.DOB, u.ProfilePicUrl, u.Bio, u.PVP_Points, u.AverageRating,
+              u.DOB, u.ProfilePicUrl, u.Bio, u.PVP_Points, u.WalletBalance, u.AverageRating,
               u.CreatedAt, r.RoleName, d.DeptName, d.DeptCode,
               p.WhatsAppNumber, p.BkashNumber, p.BankAccountDetails
        FROM Users u
