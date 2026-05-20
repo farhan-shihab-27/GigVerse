@@ -17,33 +17,42 @@ import GigFormModal from '../components/GigFormModal';
 import ChatDrawer from '../components/ChatDrawer';
 
 // ────────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — all structures are API-wiring ready
-// Replace with real API responses when backend is ready.
+// CATEGORY → ICON MAP — maps backend CategoryName strings to Lucide components
+// so the pie-chart legend keeps its icon column after switching to live data.
 // ────────────────────────────────────────────────────────────────────────────────
+const CATEGORY_ICON_MAP = {
+  Development: Code2,
+  Design:      Pen,
+  Tutoring:    BookOpen,
+  Writing:     Megaphone,
+  Marketing:   Monitor,
+};
+const FALLBACK_ICON = Briefcase;
 
-/**
- * API-ready shape: dashboardAPI.getGigDistribution()
- * Returns: { category, amountBDT, count, color }
- */
-const MOCK_GIG_DISTRIBUTION = [
-  { category: 'Development', icon: Code2,     amountBDT: 48200, count: 14, color: '#6366f1', lightColor: '#eef2ff' },
-  { category: 'Design',      icon: Pen,        amountBDT: 28500, count: 9,  color: '#ec4899', lightColor: '#fdf2f8' },
-  { category: 'Tutoring',    icon: BookOpen,   amountBDT: 19700, count: 7,  color: '#f59e0b', lightColor: '#fffbeb' },
-  { category: 'Writing',     icon: Megaphone,  amountBDT: 12300, count: 5,  color: '#10b981', lightColor: '#f0fdf4' },
-  { category: 'Marketing',   icon: Monitor,    amountBDT:  8900, count: 3,  color: '#3b82f6', lightColor: '#eff6ff' },
+// High-fidelity fallback demo data for fresh accounts without historical data.
+const DEMO_MONTHLY = [
+  { month: 'Jan', revenue: 15000, escrow: 5000 },
+  { month: 'Feb', revenue: 22000, escrow: 8000 },
+  { month: 'Mar', revenue: 18000, escrow: 12000 },
+  { month: 'Apr', revenue: 28000, escrow: 9000 },
+  { month: 'May', revenue: 35000, escrow: 15000 },
+  { month: 'Jun', revenue: 42000, escrow: 10000 },
 ];
+const CATEGORY_COLOR_MAP = {
+  Development: { color: '#3b82f6', lightColor: '#eff6ff' },
+  Design:      { color: '#10b981', lightColor: '#f0fdf4' },
+  Tutoring:    { color: '#f97316', lightColor: '#fff7ed' },
+  Writing:     { color: '#8b5cf6', lightColor: '#f5f3ff' },
+  Marketing:   { color: '#ec4899', lightColor: '#fdf2f8' },
+};
+const FALLBACK_PALETTE = { color: '#8b5cf6', lightColor: '#f5f3ff' };
 
-/**
- * API-ready shape: dashboardAPI.getMonthlyRevenue()
- * Returns: { month, revenue, escrow }[]
- */
-const MOCK_MONTHLY = [
-  { month: 'Jan', revenue: 12000, escrow: 4500 },
-  { month: 'Feb', revenue: 18500, escrow: 6200 },
-  { month: 'Mar', revenue: 14200, escrow: 5800 },
-  { month: 'Apr', revenue: 22000, escrow: 8100 },
-  { month: 'May', revenue: 28500, escrow: 9400 },
-  { month: 'Jun', revenue: 19800, escrow: 7200 },
+const DEMO_DISTRIBUTION = [
+  { category: 'Development', amountBDT: 85000, count: 12, ...CATEGORY_COLOR_MAP.Development },
+  { category: 'Design', amountBDT: 42000, count: 8, ...CATEGORY_COLOR_MAP.Design },
+  { category: 'Writing', amountBDT: 25000, count: 5, ...CATEGORY_COLOR_MAP.Writing },
+  { category: 'Tutoring', amountBDT: 15000, count: 3, ...CATEGORY_COLOR_MAP.Tutoring },
+  { category: 'Marketing', amountBDT: 10000, count: 2, ...CATEGORY_COLOR_MAP.Marketing },
 ];
 
 /**
@@ -299,8 +308,9 @@ function polarToCartesian(cx, cy, r, angleDeg) {
  *   gigDistData    {object[]}  — MOCK_GIG_DISTRIBUTION shape
  *   totalSales     {number}    — from myStats
  *   activeOrders   {number}    — from myStats
+ *   isDemoMode     {boolean}   — toggle sandbox opacity & alert banner
  */
-function PlatformAnalyticsSection({ monthlyData, gigDistData, totalSales, activeOrders }) {
+function PlatformAnalyticsSection({ monthlyData, gigDistData, totalSales, activeOrders, isDemoMode }) {
   const maxRevenue = Math.max(...monthlyData.map(d => d.revenue));
   const chartH = 80; const chartW = 300; const barCount = monthlyData.length;
   const barW = chartW / barCount;
@@ -336,6 +346,18 @@ function PlatformAnalyticsSection({ monthlyData, gigDistData, totalSales, active
           <span className="text-[10px] font-bold text-indigo-600">LIVE DATA</span>
         </div>
       </div>
+
+      {isDemoMode && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm animate-[fadeIn_0.5s_ease-out]">
+          <div className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+            <span className="text-base">💡</span>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-amber-900">Dynamic Sandbox Analytics View</p>
+            <p className="text-xs text-amber-700 mt-0.5">Real-time telemetry will sync upon your first transaction.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
 
@@ -494,6 +516,9 @@ export default function WorkspaceHome() {
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   // Review Analytics Modal state — triggered by Avg. Rating card click
   const [showReviewModal, setShowReviewModal] = useState(false);
+  // ── Telemetry state — live dashboard data from /api/dashboard/telemetry ──
+  const [telemetry, setTelemetry]             = useState(null);
+  const [telemetryLoading, setTelemetryLoading] = useState(true);
 
   const isDragging = useRef(false);
   const startX     = useRef(0);
@@ -520,6 +545,15 @@ export default function WorkspaceHome() {
     dashboardAPI.getMyStats()
       .then(r => { if (r?.data?.data) setMyStats(r.data.data); })
       .catch(() => {});
+  }, []);
+
+  // ── Fetch live telemetry (macro stats + velocity chart + distribution) ────
+  useEffect(() => {
+    setTelemetryLoading(true);
+    dashboardAPI.getTelemetry()
+      .then(r => { if (r?.data?.data) setTelemetry(r.data.data); })
+      .catch(() => {})
+      .finally(() => setTelemetryLoading(false));
   }, []);
 
   const refreshGigs = () => {
@@ -592,23 +626,44 @@ export default function WorkspaceHome() {
     skillCount >= 3,
   ].filter(Boolean).length * 25);
 
+  // ── Derive live chart data from telemetry (with fallbacks) ─────────────────
+  const isDemoMode = !telemetry || (
+    telemetry.macroStats?.totalSales === 0 &&
+    telemetry.macroStats?.activeOrders === 0 &&
+    telemetry.velocityChart?.every(d => d.revenue === 0 && d.escrow === 0) &&
+    telemetry.distributionChart?.length === 0
+  );
+
+  const liveMonthly = telemetryLoading ? DEMO_MONTHLY.map(d => ({ ...d, revenue: 0, escrow: 0 }))
+    : (isDemoMode ? DEMO_MONTHLY : (telemetry?.velocityChart || []));
+
+  const liveDistribution = telemetryLoading ? []
+    : (isDemoMode ? DEMO_DISTRIBUTION : (telemetry?.distributionChart || [])).map(d => ({
+        ...d,
+        color: CATEGORY_COLOR_MAP[d.category]?.color || d.color || FALLBACK_PALETTE.color,
+        lightColor: CATEGORY_COLOR_MAP[d.category]?.lightColor || d.lightColor || FALLBACK_PALETTE.lightColor,
+        icon: CATEGORY_ICON_MAP[d.category] || FALLBACK_ICON,
+      }));
+
   const QUICK_STATS = [
     {
       id: 'orders',
       icon: ClipboardList, label: 'Active Orders',
-      value: myStats?.activeOrders ?? '—',
+      value: telemetry?.macroStats?.activeOrders ?? myStats?.activeOrders ?? '—',
       color: '#3b82f6', bg: '#eff6ff', to: '/orders', onClick: null,
     },
     {
       id: 'pvp',
       icon: Zap, label: 'Available PVP',
-      value: profile?.PVP_Points ?? '—',
+      value: telemetry?.macroStats?.pvpPoints ?? profile?.PVP_Points ?? '—',
       color: '#f26522', bg: '#fff4eb', to: '/wallet', onClick: null,
     },
     {
       id: 'rating',
       icon: Star, label: 'Avg. Rating',
-      value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—',
+      value: telemetry?.macroStats?.avgRating != null
+        ? Number(telemetry.macroStats.avgRating).toFixed(1)
+        : (profile ? Number(profile.AverageRating || 0).toFixed(1) : '—'),
       color: '#f59e0b', bg: '#fffbeb',
       // No navigation — triggers Review Analytics Modal instead
       to: null, onClick: () => setShowReviewModal(true),
@@ -616,7 +671,9 @@ export default function WorkspaceHome() {
     {
       id: 'sales',
       icon: ShoppingCart, label: 'Total Sales',
-      value: myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—',
+      value: telemetry?.macroStats?.totalSales != null
+        ? `৳${Number(telemetry.macroStats.totalSales).toLocaleString()}`
+        : (myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—'),
       color: '#10b981', bg: '#f0fdf4', to: '/wallet', onClick: null,
     },
   ];
@@ -850,12 +907,20 @@ export default function WorkspaceHome() {
           </section>
 
           {/* ── Platform Analytics Hub ── */}
-          <PlatformAnalyticsSection
-            monthlyData={MOCK_MONTHLY}
-            gigDistData={MOCK_GIG_DISTRIBUTION}
-            totalSales={myStats?.totalSales || 0}
-            activeOrders={myStats?.activeOrders || 0}
-          />
+          {telemetryLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 size={28} className="animate-spin text-indigo-400" />
+              <span className="ml-3 text-sm text-gray-400 font-medium">Loading analytics…</span>
+            </div>
+          ) : (
+            <PlatformAnalyticsSection
+              monthlyData={liveMonthly}
+              gigDistData={liveDistribution}
+              totalSales={telemetry?.macroStats?.totalSales || myStats?.totalSales || 0}
+              activeOrders={telemetry?.macroStats?.activeOrders || myStats?.activeOrders || 0}
+              isDemoMode={isDemoMode}
+            />
+          )}
 
           {/* ── AI Smart Pricing Estimator ── */}
           <SmartGigEstimator />

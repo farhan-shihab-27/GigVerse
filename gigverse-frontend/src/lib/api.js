@@ -122,8 +122,9 @@ export const messageAPI = {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export const dashboardAPI = {
-  getStats: () => api.get('/dashboard/stats'),
-  getMyStats: () => api.get('/dashboard/my-stats'),
+  getStats:     () => api.get('/dashboard/stats'),
+  getMyStats:   () => api.get('/dashboard/my-stats'),
+  getTelemetry: () => api.get('/dashboard/telemetry'),
 };
 
 export default api;
