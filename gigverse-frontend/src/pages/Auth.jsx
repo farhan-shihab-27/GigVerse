@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Zap, Mail, Lock, Eye, EyeOff, User, ArrowRight, CheckCircle2, AlertCircle, Calendar, IdCard, Building2, GraduationCap } from 'lucide-react';
+import { Zap, Mail, Lock, Eye, EyeOff, User, ArrowRight, CheckCircle2, AlertCircle, Calendar, IdCard, Building2, GraduationCap, Target, Shield, Star } from 'lucide-react';
 import PhoneInputField from '../components/PhoneInputField';
 import OtpModal from '../components/OtpModal';
 import { authAPI } from '../lib/api';
@@ -27,10 +27,12 @@ const DEPTS = {
 };
 const ROLES = [{id:1,name:'Current Student'},{id:2,name:'Alumni'},{id:3,name:'Faculty'}];
 
+// Feature highlights shown on the left hero panel
+// Using Lucide icons instead of emojis for a professional SaaS aesthetic
 const FEATURES = [
-  { icon: '🎯', text: 'Post & discover campus gigs' },
-  { icon: '💰', text: 'Secure escrow payments' },
-  { icon: '⭐', text: 'Build your PVP reputation' },
+  { icon: Target,  text: 'Post & discover campus gigs' },
+  { icon: Shield,  text: 'Secure escrow payments' },
+  { icon: Star,    text: 'Build your PVP reputation' },
 ];
 
 function Field({ label, icon: Icon, children, hint }) {
@@ -176,12 +178,17 @@ export default function Auth() {
 
             {/* Feature badges */}
             <div className="space-y-3">
-              {FEATURES.map((f, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md border border-white/10" style={{background:'rgba(255,255,255,0.07)'}}>
-                  <span className="text-xl">{f.icon}</span>
-                  <span className="text-sm font-medium text-white/90">{f.text}</span>
-                </div>
-              ))}
+              {FEATURES.map((f, i) => {
+                const FIcon = f.icon;
+                return (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md border border-white/10" style={{background:'rgba(255,255,255,0.07)'}}>
+                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                      <FIcon size={15} className="text-brand-300" />
+                    </div>
+                    <span className="text-sm font-medium text-white/90">{f.text}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -213,8 +220,8 @@ export default function Auth() {
               ))}
             </div>
 
-            {/* Card */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/60 p-8">
+            {/* Card — premium shadow + glass-adjacent depth */}
+            <div className="bg-white rounded-3xl border border-gray-100/80 shadow-2xl shadow-gray-300/40 p-8">
 
               {/* Alerts */}
               {error && (
@@ -232,8 +239,8 @@ export default function Auth() {
               {mode === 'login' && (
                 <form onSubmit={handleLogin} className="space-y-5 animate-slide-up" noValidate>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Welcome back 👋</h2>
-                    <p className="text-sm text-gray-500 mt-1">Sign in to your GigVerse account</p>
+                    <h2 className="text-2xl font-bold text-gray-900">Welcome back, <span className="text-brand-500">Collaborator!</span></h2>
+                    <p className="text-sm text-gray-500 mt-1">Sign in to your GigVerse workspace</p>
                   </div>
                   <Field label="UIU Email" icon={Mail}>
                     <input id="login-email" type="email" placeholder="yourname@bss.uiu.ac.bd"
@@ -269,8 +276,8 @@ export default function Auth() {
               {mode === 'signup' && (
                 <form onSubmit={handleSignup} className="space-y-4 animate-slide-up" noValidate>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Join GigVerse 🚀</h2>
-                    <p className="text-sm text-gray-500 mt-1">Create your UIU campus freelance profile</p>
+                    <h2 className="text-2xl font-extrabold bg-gradient-to-r from-emerald-600 to-orange-500 bg-clip-text text-transparent">Join GigVerse</h2>
+                    <p className="text-sm text-slate-500 mt-1">Create your workspace account</p>
                   </div>
 
                   {/* Name */}

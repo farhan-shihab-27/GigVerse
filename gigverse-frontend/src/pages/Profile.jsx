@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   User, Mail, Phone, CreditCard, Award, Star, Edit3, Save,
   X, Zap, Calendar, FileText, Shield, CheckCircle2, AlertCircle,
-  Loader2, ClipboardList, Trash2, RefreshCw, Briefcase, Plus, Pencil, ImageOff, Wallet
+  Loader2, ClipboardList, Trash2, RefreshCw, Briefcase, Plus, Pencil, ImageOff, Wallet, Tag
 } from 'lucide-react';
 import { userAPI, gigAPI } from '../lib/api';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -86,7 +86,7 @@ export default function Profile() {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     try {
       await gigAPI.remove(gigId);
-      toast.success('Gig deleted.', { className: 'gv-toast', icon: '🗑️' });
+      toast.success('Gig removed successfully.', { className: 'gv-toast' });
       fetchMyGigs();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete gig.', { className: 'gv-toast' });
@@ -241,13 +241,33 @@ export default function Profile() {
         </div>
 
 
-        {/* SKILLS */}
+        {/* SKILLS — Premium enterprise badge tiles */}
         {Array.isArray(profile.skills) && profile.skills.length > 0 && (
           <div id="profile-skills" className="card p-6 mb-6">
-            <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><Zap size={15} className="text-brand-500" /> Skills</h3>
+            {/* Section header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
+                  <Tag size={11} className="text-white" />
+                </div>
+                Professional Skills
+              </h3>
+              <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                {profile.skills.length} verified
+              </span>
+            </div>
+            {/* Skills badge grid — exact spec: flex flex-wrap gap-2 container, slate pill badges */}
             <div className="flex flex-wrap gap-2">
               {profile.skills.map(s => (
-                <span key={s.SkillID} className="bg-brand-50 text-brand-700 text-xs font-medium px-3 py-1.5 rounded-full border border-brand-100">{s.SkillName}</span>
+                <span
+                  key={s.SkillID}
+                  className="bg-slate-50 text-slate-700 border border-slate-200
+                    px-3 py-1 rounded-full text-sm font-medium
+                    hover:bg-white hover:border-slate-300 hover:shadow-sm
+                    transition-all duration-150 cursor-default"
+                >
+                  {s.SkillName}
+                </span>
               ))}
             </div>
           </div>

@@ -1,17 +1,463 @@
-// src/pages/WorkspaceHome.jsx — Collapsible sidebar, grouped search, draggable right panel
-import { useState, useEffect, useRef, useCallback } from 'react';
+// src/pages/WorkspaceHome.jsx — Executive Hub Dashboard with ERP-grade analytics
+// Collapsible sidebar, grouped search, draggable right panel, analytics layer.
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Briefcase, MessageSquare,
   Trophy, Wallet, Search, Bell, Star, Zap, LogOut, Award,
   User, TrendingUp, Loader2, ImageOff, ChevronRight, Tag,
   X, GripVertical, ShieldCheck, ArrowUpRight,
-  ChevronsLeft, ChevronsRight, ShoppingCart
+  ChevronsLeft, ChevronsRight, ShoppingCart, BarChart2,
+  PieChart, Activity, TrendingDown, DollarSign, BarChart,
+  Code2, Pen, BookOpen, Megaphone, Monitor
 } from 'lucide-react';
 import { gigAPI, userAPI, searchAPI, orderAPI, dashboardAPI, messageAPI } from '../lib/api';
 import SmartGigEstimator from '../components/SmartGigEstimator';
 import GigFormModal from '../components/GigFormModal';
 import ChatDrawer from '../components/ChatDrawer';
+
+// ────────────────────────────────────────────────────────────────────────────────
+// MOCK DATA — all structures are API-wiring ready
+// Replace with real API responses when backend is ready.
+// ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * API-ready shape: dashboardAPI.getGigDistribution()
+ * Returns: { category, amountBDT, count, color }
+ */
+const MOCK_GIG_DISTRIBUTION = [
+  { category: 'Development', icon: Code2,     amountBDT: 48200, count: 14, color: '#6366f1', lightColor: '#eef2ff' },
+  { category: 'Design',      icon: Pen,        amountBDT: 28500, count: 9,  color: '#ec4899', lightColor: '#fdf2f8' },
+  { category: 'Tutoring',    icon: BookOpen,   amountBDT: 19700, count: 7,  color: '#f59e0b', lightColor: '#fffbeb' },
+  { category: 'Writing',     icon: Megaphone,  amountBDT: 12300, count: 5,  color: '#10b981', lightColor: '#f0fdf4' },
+  { category: 'Marketing',   icon: Monitor,    amountBDT:  8900, count: 3,  color: '#3b82f6', lightColor: '#eff6ff' },
+];
+
+/**
+ * API-ready shape: dashboardAPI.getMonthlyRevenue()
+ * Returns: { month, revenue, escrow }[]
+ */
+const MOCK_MONTHLY = [
+  { month: 'Jan', revenue: 12000, escrow: 4500 },
+  { month: 'Feb', revenue: 18500, escrow: 6200 },
+  { month: 'Mar', revenue: 14200, escrow: 5800 },
+  { month: 'Apr', revenue: 22000, escrow: 8100 },
+  { month: 'May', revenue: 28500, escrow: 9400 },
+  { month: 'Jun', revenue: 19800, escrow: 7200 },
+];
+
+/**
+ * API-ready shape: dashboardAPI.getRecentReviews()
+ * Returns: { name, rating, text, date, avatar }[]
+ */
+const MOCK_REVIEWS = [
+  { id: 1, name: 'Rahim Uddin',   rating: 5, text: 'Outstanding work! Delivered well ahead of schedule with exceptional quality.', date: '2 days ago', initials: 'RU' },
+  { id: 2, name: 'Fatema Khanom', rating: 4, text: 'Very professional, clear communication throughout the project.', date: '1 week ago', initials: 'FK' },
+  { id: 3, name: 'Sakib Hassan',  rating: 5, text: 'Exceeded all expectations. Will definitely hire again for future projects.', date: '2 weeks ago', initials: 'SH' },
+];
+
+// ── Review Analytics Modal ───────────────────────────────────────────────────────────
+/**
+ * Premium overlay modal showing rating breakdown, bar chart, and recent reviews.
+ * Props:
+ *   isOpen     {boolean}
+ *   onClose    {() => void}
+ *   avgRating  {number}     — from profile.AverageRating
+ *   reviews    {object[]}   — MOCK_REVIEWS (replace with API)
+ */
+function ReviewAnalyticsModal({ isOpen, onClose, avgRating, reviews }) {
+  // Rating distribution mock (API-ready: replace with real counts)
+  const distribution = [
+    { stars: 5, count: 8,  pct: 62 },
+    { stars: 4, count: 3,  pct: 23 },
+    { stars: 3, count: 1,  pct: 8  },
+    { stars: 2, count: 1,  pct: 5  },
+    { stars: 1, count: 0,  pct: 0  },
+  ];
+  const totalReviews = distribution.reduce((s, d) => s + d.count, 0);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" />
+
+      {/* Panel */}
+      <div
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-[scaleIn_0.25s_ease-out]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header gradient bar */}
+        <div className="bg-gradient-to-r from-amber-400 via-orange-400 to-brand-500 p-5 text-white">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Review Analytics</p>
+              <h2 className="text-2xl font-extrabold leading-none">{Number(avgRating || 0).toFixed(1)}</h2>
+              <div className="flex items-center gap-1 mt-1.5">
+                {[1,2,3,4,5].map(s => (
+                  <Star
+                    key={s} size={14}
+                    className={s <= Math.round(avgRating || 0) ? 'fill-white text-white' : 'text-white/40 fill-white/40'}
+                  />
+                ))}
+                <span className="text-xs font-semibold ml-1.5 opacity-80">{totalReviews} reviews</span>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            >
+              <X size={15} className="text-white" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Star breakdown bars */}
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Rating Breakdown</p>
+            <div className="space-y-2">
+              {distribution.map(({ stars, count, pct }) => (
+                <div key={stars} className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 w-14 shrink-0 justify-end">
+                    <span className="text-xs font-bold text-gray-700">{stars}</span>
+                    <Star size={11} className="fill-amber-400 text-amber-400" />
+                  </div>
+                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-400 font-medium w-8 shrink-0">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Trend indicator */}
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-100">
+            <TrendingUp size={18} className="text-emerald-500 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-emerald-700">Rating Trend: Positive</p>
+              <p className="text-xs text-emerald-600 mt-0.5">Your average rating improved 0.3 points this month</p>
+            </div>
+          </div>
+
+          {/* Recent reviews */}
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recent Reviews</p>
+            <div className="space-y-3">
+              {reviews.map(r => (
+                <div key={r.id} className="flex gap-3 p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50/30 transition-all">
+                  <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                    {r.initials}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-gray-900">{r.name}</span>
+                      <div className="flex items-center gap-0.5">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} size={9} className={s <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200 fill-gray-200'} />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-gray-400 ml-auto shrink-0">{r.date}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{r.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Active Gigs SVG Pie Chart ───────────────────────────────────────────────────────────
+/**
+ * Pure SVG pie chart for gig income distribution.
+ * Generates SVG arc slices from data array.
+ * Props:
+ *   data  {object[]}  — MOCK_GIG_DISTRIBUTION shape
+ */
+function ActiveGigsPieChart({ data }) {
+  const [hovered, setHovered] = useState(null);
+
+  const total = data.reduce((s, d) => s + d.amountBDT, 0);
+
+  // Compute SVG arcs
+  const cx = 90; const cy = 90; const r = 72; const gap = 2;
+  const arcs = useMemo(() => {
+    let startAngle = -90; // Start from top
+    return data.map((d) => {
+      const pct = d.amountBDT / total;
+      const angle = pct * 360;
+      const endAngle = startAngle + angle - gap;
+      const start = polarToCartesian(cx, cy, r, startAngle);
+      const end   = polarToCartesian(cx, cy, r, endAngle);
+      const largeArc = angle > 180 ? 1 : 0;
+      const path = [
+        `M ${cx} ${cy}`,
+        `L ${start.x} ${start.y}`,
+        `A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`,
+        'Z',
+      ].join(' ');
+      const midAngle = startAngle + angle / 2;
+      const labelPos = polarToCartesian(cx, cy, r * 0.62, midAngle);
+      const result = { ...d, path, pct: Math.round(pct * 100), midAngle, labelPos };
+      startAngle += angle;
+      return result;
+    });
+  }, [data, total]);
+
+  return (
+    <div>
+      {/* Chart + legend row */}
+      <div className="flex flex-col sm:flex-row items-center gap-5">
+        {/* SVG Pie */}
+        <div className="relative shrink-0" style={{ width: 180, height: 180 }}>
+          <svg width="180" height="180" viewBox="0 0 180 180">
+            {arcs.map((arc, i) => (
+              <path
+                key={arc.category}
+                d={arc.path}
+                fill={arc.color}
+                opacity={hovered === null || hovered === i ? 1 : 0.45}
+                stroke="white"
+                strokeWidth="2"
+                style={{ transition: 'opacity 0.2s, transform 0.2s', cursor: 'pointer',
+                  transform: hovered === i ? `translate(${Math.cos((arc.midAngle * Math.PI) / 180) * 5}px, ${Math.sin((arc.midAngle * Math.PI) / 180) * 5}px)` : 'translate(0,0)',
+                  transformOrigin: `${cx}px ${cy}px`
+                }}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+              />
+            ))}
+            {/* Center hole */}
+            <circle cx={cx} cy={cy} r="36" fill="white" />
+            {/* Center text */}
+            <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fontWeight="800" fill="#111827">Total</text>
+            <text x={cx} y={cy + 10} textAnchor="middle" fontSize="9" fontWeight="600" fill="#6b7280">Income</text>
+          </svg>
+          {/* Hover tooltip */}
+          {hovered !== null && (
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg pointer-events-none">
+              {arcs[hovered].category}: {arcs[hovered].pct}%
+            </div>
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="flex-1 space-y-2.5 w-full">
+          {arcs.map((arc, i) => {
+            const ArcIcon = arc.icon;
+            return (
+              <div
+                key={arc.category}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-default transition-all duration-200 ${
+                  hovered === i ? 'shadow-sm scale-[1.01]' : ''
+                }`}
+                style={{ background: hovered === i ? arc.lightColor : 'transparent' }}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: arc.color }} />
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0`} style={{ background: arc.lightColor }}>
+                  <ArcIcon size={11} style={{ color: arc.color }} />
+                </div>
+                <span className="text-xs font-semibold text-gray-700 flex-1 min-w-0 truncate">{arc.category}</span>
+                <span className="text-xs font-extrabold text-gray-900 shrink-0 ml-1">৳{arc.amountBDT.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-gray-400 w-8 text-right shrink-0">{arc.pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Polar to Cartesian helper for SVG arc calculations */
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad + Math.PI / 2), y: cy + r * Math.sin(rad + Math.PI / 2) };
+}
+
+// ── Platform Analytics Section ──────────────────────────────────────────────────────────
+/**
+ * The prominent analytics grid row below the summary cards.
+ * Left 60%: Monthly Revenue & Escrow Velocity placeholder with SVG sparkline.
+ * Right 40%: Active Gigs Distribution SVG Pie chart.
+ * Props:
+ *   monthlyData    {object[]}  — MOCK_MONTHLY shape
+ *   gigDistData    {object[]}  — MOCK_GIG_DISTRIBUTION shape
+ *   totalSales     {number}    — from myStats
+ *   activeOrders   {number}    — from myStats
+ */
+function PlatformAnalyticsSection({ monthlyData, gigDistData, totalSales, activeOrders }) {
+  const maxRevenue = Math.max(...monthlyData.map(d => d.revenue));
+  const chartH = 80; const chartW = 300; const barCount = monthlyData.length;
+  const barW = chartW / barCount;
+
+  // Sparkline points for revenue line
+  const points = monthlyData.map((d, i) => {
+    const x = (i / (barCount - 1)) * chartW;
+    const y = chartH - (d.revenue / maxRevenue) * chartH;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const escrowPoints = monthlyData.map((d, i) => {
+    const x = (i / (barCount - 1)) * chartW;
+    const y = chartH - (d.escrow / maxRevenue) * chartH;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <section className="animate-[fadeIn_0.5s_ease-out]">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center shadow-sm">
+            <Activity size={15} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-base font-extrabold text-gray-900">Platform Analytics</h2>
+            <p className="text-xs text-gray-400">Your earnings intelligence hub</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <span className="text-[10px] font-bold text-indigo-600">LIVE DATA</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+
+        {/* ── LEFT: Monthly Revenue & Escrow Velocity (60% / 3 cols) ── */}
+        <div className="xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-gray-900">Monthly Revenue & Escrow Velocity</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Revenue vs Escrow — last 6 months</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                <span className="text-[10px] font-semibold text-gray-500">Revenue</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" style={{ borderStyle: 'dashed', borderWidth: 1 }} />
+                <span className="text-[10px] font-semibold text-gray-500">Escrow</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SVG Sparkline */}
+          <div className="relative mb-4" style={{ height: chartH + 8 }}>
+            <svg width="100%" height={chartH + 8} viewBox={`0 0 ${chartW} ${chartH + 8}`} preserveAspectRatio="none">
+              {/* Escrow area fill */}
+              <defs>
+                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="escrowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+
+              {/* Revenue area */}
+              <polygon
+                points={`0,${chartH} ${points} ${chartW},${chartH}`}
+                fill="url(#revenueGrad)"
+              />
+              {/* Revenue line */}
+              <polyline points={points} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+              {/* Escrow area */}
+              <polygon
+                points={`0,${chartH} ${escrowPoints} ${chartW},${chartH}`}
+                fill="url(#escrowGrad)"
+              />
+              {/* Escrow line (dashed) */}
+              <polyline points={escrowPoints} fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="5 3" strokeLinecap="round" strokeLinejoin="round" />
+
+              {/* Data point dots */}
+              {monthlyData.map((d, i) => {
+                const x = (i / (barCount - 1)) * chartW;
+                const y = chartH - (d.revenue / maxRevenue) * chartH;
+                return <circle key={i} cx={x} cy={y} r="3" fill="#6366f1" stroke="white" strokeWidth="1.5" />;
+              })}
+            </svg>
+          </div>
+
+          {/* Month labels */}
+          <div className="flex justify-between px-1">
+            {monthlyData.map(d => (
+              <span key={d.month} className="text-[10px] font-semibold text-gray-400">{d.month}</span>
+            ))}
+          </div>
+
+          {/* KPI row */}
+          <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+            {[
+              { label: 'Peak Month', value: monthlyData.reduce((a, b) => a.revenue > b.revenue ? a : b).month, color: 'text-indigo-600', icon: TrendingUp },
+              { label: 'Total 6-mo Revenue', value: `৳${monthlyData.reduce((s,d) => s+d.revenue,0).toLocaleString()}`, color: 'text-emerald-600', icon: DollarSign },
+              { label: 'Avg Escrow/mo', value: `৳${Math.round(monthlyData.reduce((s,d) => s+d.escrow,0)/monthlyData.length).toLocaleString()}`, color: 'text-amber-600', icon: BarChart },
+            ].map(kpi => {
+              const KIcon = kpi.icon;
+              return (
+                <div key={kpi.label} className="text-center">
+                  <KIcon size={14} className={`${kpi.color} mx-auto mb-1`} />
+                  <p className={`text-sm font-extrabold ${kpi.color}`}>{kpi.value}</p>
+                  <p className="text-[10px] text-gray-400">{kpi.label}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── RIGHT: Active Gigs Distribution (40% / 2 cols) ── */}
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-gray-900">Active Gigs Distribution</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Income by category (BDT)</p>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
+              <PieChart size={11} className="text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-400">Current</span>
+            </div>
+          </div>
+          <ActiveGigsPieChart data={gigDistData} />
+
+          {/* Summary footer */}
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+            <div className="text-center">
+              <p className="text-base font-extrabold text-gray-900">{gigDistData.reduce((s,d) => s+d.count, 0)}</p>
+              <p className="text-[10px] text-gray-400">Total Gigs</p>
+            </div>
+            <div className="text-center">
+              <p className="text-base font-extrabold text-emerald-600">৳{gigDistData.reduce((s,d) => s+d.amountBDT, 0).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400">Total Earnings</p>
+            </div>
+            <div className="text-center">
+              <p className="text-base font-extrabold text-indigo-600">{gigDistData.length}</p>
+              <p className="text-[10px] text-gray-400">Categories</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',   to: '/home' },
@@ -46,6 +492,8 @@ export default function WorkspaceHome() {
   const [showGigModal, setShowGigModal] = useState(false);
   const [showChat, setShowChat]         = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  // Review Analytics Modal state — triggered by Avg. Rating card click
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   const isDragging = useRef(false);
   const startX     = useRef(0);
@@ -145,10 +593,32 @@ export default function WorkspaceHome() {
   ].filter(Boolean).length * 25);
 
   const QUICK_STATS = [
-    { icon: ClipboardList, label: 'Active Orders', value: myStats?.activeOrders ?? '—', color: '#3b82f6', bg: '#eff6ff', to: '/orders' },
-    { icon: Zap,           label: 'Available PVP', value: profile?.PVP_Points ?? '—',  color: '#f26522', bg: '#fff4eb', to: '/wallet' },
-    { icon: Star,          label: 'Avg. Rating',   value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—', color: '#f59e0b', bg: '#fffbeb', to: '/leaderboard' },
-    { icon: ShoppingCart,  label: 'Total Sales',   value: myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—', color: '#10b981', bg: '#f0fdf4', to: '/orders' },
+    {
+      id: 'orders',
+      icon: ClipboardList, label: 'Active Orders',
+      value: myStats?.activeOrders ?? '—',
+      color: '#3b82f6', bg: '#eff6ff', to: '/orders', onClick: null,
+    },
+    {
+      id: 'pvp',
+      icon: Zap, label: 'Available PVP',
+      value: profile?.PVP_Points ?? '—',
+      color: '#f26522', bg: '#fff4eb', to: '/wallet', onClick: null,
+    },
+    {
+      id: 'rating',
+      icon: Star, label: 'Avg. Rating',
+      value: profile ? Number(profile.AverageRating || 0).toFixed(1) : '—',
+      color: '#f59e0b', bg: '#fffbeb',
+      // No navigation — triggers Review Analytics Modal instead
+      to: null, onClick: () => setShowReviewModal(true),
+    },
+    {
+      id: 'sales',
+      icon: ShoppingCart, label: 'Total Sales',
+      value: myStats ? `৳${Number(myStats.totalSales).toLocaleString()}` : '—',
+      color: '#10b981', bg: '#f0fdf4', to: '/wallet', onClick: null,
+    },
   ];
 
   const hasSuggestions = suggestions.skills.length > 0 || suggestions.users.length > 0;
@@ -304,30 +774,61 @@ export default function WorkspaceHome() {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}>
 
-          {/* ── Welcome Dashboard Summary ── */}
+          {/* ── Executive Dashboard Header ── */}
           <section>
-            <div className="mb-5">
-              <h1 className="text-xl font-extrabold text-gray-900">
-                Welcome back, <span className="text-brand-500">{firstName}</span>
-              </h1>
-              <p className="text-sm text-gray-400 mt-0.5">Here is your workspace overview for today.</p>
+            {/* Premium Header Block */}
+            <div className="mb-6 pb-5 border-b border-gray-100/80">
+              <div className="flex items-start justify-between flex-wrap gap-3">
+                <div>
+                  {/* GigVerse wordmark — emerald gradient */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Executive Dashboard</span>
+                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">GigVerse</span>
+                  </div>
+                  <h1 className="text-2xl font-extrabold leading-tight">
+                    <span className="text-gray-900">Welcome back, </span>
+                    <span className="bg-gradient-to-r from-brand-500 to-orange-400 bg-clip-text text-transparent">{firstName}</span>
+                  </h1>
+                  <p className="text-sm text-gray-400 mt-0.5 font-medium">Here is your workspace intelligence overview for today.</p>
+                </div>
+                {/* Live status pill */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 self-start mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Live Data</span>
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
-              {QUICK_STATS.map(({ icon: Icon, label, value, color, bg, to }) => (
-                <Link key={label} to={to}
-                  className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm
-                    hover:shadow-lg hover:-translate-y-1 hover:border-gray-200
-                    cursor-pointer transition-all duration-200 group block">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
-                      <Icon size={16} style={{ color }} />
+              {QUICK_STATS.map(({ id, icon: Icon, label, value, color, bg, to, onClick }) => {
+                const cardClasses = `relative bg-white rounded-2xl border border-gray-100 p-4
+                  shadow-md hover:shadow-xl hover:-translate-y-1.5 hover:border-gray-200/80
+                  cursor-pointer transition-all duration-300 group block overflow-hidden`;
+                const cardInner = (
+                  <>
+                    {/* Subtle colored top accent bar */}
+                    <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{ background: `linear-gradient(90deg, ${color}, ${color}88)` }}
+                    />
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style={{ background: bg }}>
+                        <Icon size={17} style={{ color }} />
+                      </div>
+                      <ArrowUpRight size={13} className="text-gray-200 group-hover:text-gray-400 transition-colors mt-0.5" />
                     </div>
-                    <ArrowUpRight size={13} className="text-gray-200 group-hover:text-gray-400 transition-colors" />
-                  </div>
-                  <p className="text-2xl font-extrabold text-gray-900">{value}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-                </Link>
-              ))}
+                    <p className="text-2xl font-extrabold text-gray-900 tracking-tight">{value}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 font-medium">{label}</p>
+                    {id === 'rating' && (
+                      <p className="text-[10px] text-brand-400 font-semibold mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View Analytics →</p>
+                    )}
+                  </>
+                );
+                return onClick ? (
+                  <button key={id} onClick={onClick} className={cardClasses}>{cardInner}</button>
+                ) : (
+                  <Link key={id} to={to} className={cardClasses}>{cardInner}</Link>
+                );
+              })}
             </div>
             {profilePct < 100 && (
               <div className="bg-white rounded-2xl border border-brand-100 p-4 shadow-sm flex items-center gap-4">
@@ -347,6 +848,14 @@ export default function WorkspaceHome() {
               </div>
             )}
           </section>
+
+          {/* ── Platform Analytics Hub ── */}
+          <PlatformAnalyticsSection
+            monthlyData={MOCK_MONTHLY}
+            gigDistData={MOCK_GIG_DISTRIBUTION}
+            totalSales={myStats?.totalSales || 0}
+            activeOrders={myStats?.activeOrders || 0}
+          />
 
           {/* ── AI Smart Pricing Estimator ── */}
           <SmartGigEstimator />
@@ -551,6 +1060,14 @@ export default function WorkspaceHome() {
       isOpen={showChat}
       onClose={() => setShowChat(false)}
       onUnreadChange={(count) => setUnreadMsgCount(count)}
+    />
+
+    {/* Review Analytics Modal — triggered by Avg. Rating stat card */}
+    <ReviewAnalyticsModal
+      isOpen={showReviewModal}
+      onClose={() => setShowReviewModal(false)}
+      avgRating={profile?.AverageRating || 0}
+      reviews={MOCK_REVIEWS}
     />
     </>
   );

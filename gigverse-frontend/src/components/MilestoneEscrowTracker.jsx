@@ -1,10 +1,12 @@
 // src/components/MilestoneEscrowTracker.jsx — Elite ERP-Grade Milestone Escrow Tracker
 // Premium glassmorphic design with animated progress, step sequencing, and fund release UI.
-import { useState, useEffect } from 'react';
+// Analytics section appended at bottom — reactive to live milestone state, API-wiring ready.
+import { useState, useEffect, useRef } from 'react';
 import {
   Check, Palette, FileText, RefreshCw, Package, Lock, Loader2,
   ShieldCheck, Sparkles, ArrowRight, DollarSign, AlertCircle,
-  Clock, ChevronRight, Unlock
+  Clock, ChevronRight, Unlock, TrendingUp, Shield, BarChart2,
+  Layers, Activity
 } from 'lucide-react';
 import { orderAPI } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -235,6 +237,295 @@ function EscrowProgressBar({ percent, isComplete }) {
   );
 }
 
+// ── SVG Doughnut Chart ───────────────────────────────────────────────────────
+/**
+ * Pure SVG doughnut ring chart. No external dependencies.
+ * Props:
+ *   releasedPct  {number}  0-100 — percentage of funds released (emerald slice)
+ *   isComplete   {boolean} — full completion state
+ */
+function EscrowDoughnutChart({ releasedPct, isComplete }) {
+  const radius = 52;
+  const cx = 70;
+  const cy = 70;
+  const circumference = 2 * Math.PI * radius;
+  // Clamp to [0, 100]
+  const pct = Math.min(100, Math.max(0, releasedPct));
+  const releasedArc = (pct / 100) * circumference;
+  const remainingArc = circumference - releasedArc;
+
+  // Colors
+  const releasedColor = '#10b981'; // Emerald-500
+  const remainColor   = isComplete ? '#d1fae5' : '#f1f5f9'; // Pale emerald or slate
+  const accentColor   = pct > 0 && pct < 100 ? '#f97316' : releasedColor;
+
+  const animRef = useRef(null);
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: 140, height: 140 }}>
+      <svg width="140" height="140" viewBox="0 0 140 140" fill="none">
+        {/* Background ring */}
+        <circle
+          cx={cx} cy={cy} r={radius}
+          stroke={remainColor}
+          strokeWidth="18"
+          fill="none"
+        />
+        {/* Released arc — animated via CSS transition */}
+        <circle
+          cx={cx} cy={cy} r={radius}
+          stroke={releasedColor}
+          strokeWidth="18"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${releasedArc} ${remainingArc}`}
+          strokeDashoffset={circumference * 0.25} // Start from top
+          style={{ transition: 'stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1)' }}
+        />
+        {/* Accent cap dot when partially done */}
+        {pct > 2 && pct < 98 && (
+          <circle
+            cx={cx} cy={cy - radius} r="4"
+            fill={accentColor}
+            style={{
+              transformOrigin: `${cx}px ${cy}px`,
+              transform: `rotate(${(pct / 100) * 360 - 90}deg)`,
+              transition: 'transform 1s cubic-bezier(0.4,0,0.2,1)'
+            }}
+          />
+        )}
+        {/* Completion sparkle ring */}
+        {isComplete && (
+          <circle cx={cx} cy={cy} r={radius + 12}
+            stroke="#10b981" strokeWidth="1.5" fill="none" strokeDasharray="4 6"
+            opacity="0.4"
+          />
+        )}
+      </svg>
+      {/* Center label */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className={`text-2xl font-extrabold leading-none ${
+          isComplete ? 'text-emerald-600' : pct > 0 ? 'text-gray-800' : 'text-gray-300'
+        }`}>
+          {Math.round(pct)}%
+        </span>
+        <span className={`text-[10px] font-bold mt-0.5 ${
+          isComplete ? 'text-emerald-500' : 'text-gray-400'
+        }`}>
+          {isComplete ? 'Complete' : 'Done'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Order Financial Analytics Section ────────────────────────────────────────
+/**
+ * Appended below the milestone cards — reads computed values from parent scope.
+ * All props are API-wiring ready; replace mock derivations with real API data.
+ *
+ * Props:
+ *   totalOrderValue  {number}  — full contract value in BDT
+ *   releasedFunds    {number}  — sum of released milestone amounts
+ *   escrowRemaining  {number}  — totalOrderValue - releasedFunds
+ *   completionPct    {number}  — 0-100
+ *   isComplete       {boolean}
+ *   milestoneCount   {number}  — total milestones (4)
+ *   releasedCount    {number}  — milestones with funds_released status
+ */
+function OrderFinancialAnalytics({
+  totalOrderValue,
+  releasedFunds,
+  escrowRemaining,
+  completionPct,
+  isComplete,
+  milestoneCount,
+  releasedCount,
+}) {
+  // ── ERP Stat Cards data ───────────────────────────────────────────────────
+  const statCards = [
+    {
+      id: 'tvl',
+      icon: Shield,
+      label: 'Total Value Locked (TVL)',
+      sublabel: 'Full contract escrow pool',
+      value: `৳${Number(totalOrderValue).toLocaleString()}`,
+      valueColor: 'text-gray-900',
+      iconBg: 'bg-slate-100',
+      iconColor: 'text-slate-500',
+      accent: 'border-slate-200',
+      badge: null,
+    },
+    {
+      id: 'liquid',
+      icon: TrendingUp,
+      label: 'Liquid Assets Released',
+      sublabel: `${releasedCount} of ${milestoneCount} milestones`,
+      value: `৳${Number(releasedFunds).toLocaleString()}`,
+      valueColor: releasedFunds > 0 ? 'text-emerald-600' : 'text-gray-400',
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-500',
+      accent: releasedFunds > 0 ? 'border-emerald-200' : 'border-gray-200',
+      badge: releasedFunds > 0 ? { text: '+' + Math.round(completionPct) + '%', color: 'bg-emerald-100 text-emerald-700' } : null,
+    },
+    {
+      id: 'escrow',
+      icon: ShieldCheck,
+      label: 'Escrow Protection',
+      sublabel: 'Remaining in secure vault',
+      value: `৳${Number(escrowRemaining).toLocaleString()}`,
+      valueColor: escrowRemaining > 0 ? 'text-orange-600' : 'text-emerald-500',
+      iconBg: 'bg-orange-50',
+      iconColor: 'text-orange-500',
+      accent: escrowRemaining > 0 ? 'border-orange-200' : 'border-emerald-200',
+      badge: { text: 'Platform Secured', color: 'bg-blue-50 text-blue-600' },
+    },
+  ];
+
+  return (
+    <div className="mt-2 pt-6 border-t-2 border-dashed border-gray-100">
+
+      {/* ── Section Header ── */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm shadow-emerald-200">
+            <BarChart2 size={15} className="text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-extrabold text-gray-900 leading-tight">Order Financial Analytics</p>
+            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Real-time escrow telemetry</p>
+          </div>
+        </div>
+        {/* Live indicator */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-bold text-emerald-600">LIVE</span>
+        </div>
+      </div>
+
+      {/* ── Chart + Legend Row ── */}
+      <div className="flex flex-col sm:flex-row items-center gap-6 mb-6
+        bg-gradient-to-br from-slate-50 to-emerald-50/30
+        border border-slate-200/80 rounded-2xl p-5
+        shadow-sm">
+
+        {/* Doughnut Chart */}
+        <div className="shrink-0">
+          <EscrowDoughnutChart releasedPct={completionPct} isComplete={isComplete} />
+        </div>
+
+        {/* Legend + Breakdown */}
+        <div className="flex-1 min-w-0 space-y-3">
+          <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Escrow Breakdown</p>
+
+          {/* Released row */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
+                <span className="text-xs font-semibold text-gray-700">Released Funds</span>
+              </div>
+              <span className="text-xs font-extrabold text-emerald-600">
+                ৳{Number(releasedFunds).toLocaleString()}
+              </span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${completionPct}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Escrow remaining row */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-orange-300 shrink-0" />
+                <span className="text-xs font-semibold text-gray-700">Funds in Escrow</span>
+              </div>
+              <span className="text-xs font-extrabold text-orange-500">
+                ৳{Number(escrowRemaining).toLocaleString()}
+              </span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-orange-300 to-amber-300 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${100 - completionPct}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Milestone step indicators */}
+          <div className="flex items-center gap-2 pt-1">
+            {Array.from({ length: milestoneCount }).map((_, i) => (
+              <div
+                key={i}
+                className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                  i < releasedCount ? 'bg-emerald-400' : 'bg-gray-200'
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400">
+            {releasedCount} of {milestoneCount} milestone escrow pools cleared
+          </p>
+        </div>
+      </div>
+
+      {/* ── ERP Stat Cards — 3-column grid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {statCards.map((card) => {
+          const CardIcon = card.icon;
+          return (
+            <div
+              key={card.id}
+              className={`relative rounded-xl border-2 ${card.accent} bg-white p-4
+                shadow-sm hover:shadow-md hover:-translate-y-0.5
+                transition-all duration-200 group overflow-hidden`}
+            >
+              {/* Subtle gradient glow on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                bg-gradient-to-br from-transparent via-transparent to-slate-50/60 rounded-xl pointer-events-none" />
+
+              <div className="relative z-10">
+                {/* Icon + Badge row */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center`}>
+                    <CardIcon size={15} className={card.iconColor} />
+                  </div>
+                  {card.badge && (
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${card.badge.color}`}>
+                      {card.badge.text}
+                    </span>
+                  )}
+                </div>
+
+                {/* Value */}
+                <p className={`text-lg font-extrabold ${card.valueColor} leading-none mb-1`}>
+                  {card.value}
+                </p>
+
+                {/* Labels */}
+                <p className="text-[11px] font-bold text-gray-700 leading-tight">{card.label}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{card.sublabel}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Footer note ── */}
+      <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50/50 border border-blue-100">
+        <Activity size={11} className="text-blue-400 shrink-0" />
+        <p className="text-[10px] text-blue-500 font-medium">
+          Escrow values update in real-time as milestones are approved and funds are released.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function MilestoneEscrowTracker({
   orderId,
@@ -419,6 +710,17 @@ export default function MilestoneEscrowTracker({
           </div>
         ))}
       </div>
+
+      {/* ── Order Financial Analytics — appended below, no existing logic touched ── */}
+      <OrderFinancialAnalytics
+        totalOrderValue={Number(orderAmount)}
+        releasedFunds={totalReleased}
+        escrowRemaining={totalLocked}
+        completionPct={progressPercent}
+        isComplete={isFullyReleased}
+        milestoneCount={STEPS.length}
+        releasedCount={releasedCount}
+      />
     </div>
   );
 }
