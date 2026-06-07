@@ -301,7 +301,8 @@ INSERT INTO Departments (DeptName, DeptCode) VALUES
   ('Master in Dev. Studies (MDS)', '125');
 
 INSERT INTO Categories (CategoryName) VALUES
-  ('Design'), ('Development'), ('Writing'), ('Marketing'), ('Tutoring');
+  ('Design'), ('Development'), ('Writing'), ('Marketing'), ('Tutoring'),
+  ('Academic & Course Guidelines'), ('Career Mentorship & Grooming');
 
 INSERT INTO Skills (CategoryID, SkillName) VALUES
   (1, 'Logo Design'),

@@ -7,7 +7,7 @@ import {
 import { gigAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
-const CATEGORIES = ['Design', 'Development', 'Writing', 'Marketing', 'Tutoring'];
+const CATEGORIES = ['Design', 'Development', 'Writing', 'Marketing', 'Tutoring', 'Academic & Course Guidelines', 'Career Mentorship & Grooming'];
 const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_KEY || '';
 
 async function uploadToImgBB(file) {

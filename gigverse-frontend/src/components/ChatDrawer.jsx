@@ -111,6 +111,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
   const [messages, setMessages]           = useState([]);
   const [msgInput, setMsgInput]           = useState('');
   const [loading, setLoading]             = useState(false);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
   const [sending, setSending]             = useState(false);
   const [accepting, setAccepting]         = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
@@ -135,6 +136,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
 
   // ── Fetch conversation list ────────────────────────────────────────────────
   const fetchConversations = useCallback(async () => {
+    setConversationsLoading(true);
     try {
       const res = await messageAPI.getConversations();
       const convos = res.data?.data || [];
@@ -143,16 +145,19 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
       const totalUnread = convos.reduce((sum, c) => sum + (c.UnreadCount || 0), 0);
       onUnreadChange?.(totalUnread);
     } catch { /* silent */ }
+    finally { setConversationsLoading(false); }
   }, [onUnreadChange]);
 
   // ── Fetch messages with a partner ──────────────────────────────────────────
-  const fetchMessages = useCallback(async (partnerId) => {
+  const fetchMessages = useCallback(async (partnerId, isInitial = false) => {
     if (!partnerId) return;
     setLoading(true);
     try {
       const res = await messageAPI.getConversation(partnerId);
       setMessages(res.data?.data || []);
-    } catch { toast.error('Failed to load messages.', { className: 'gv-toast' }); }
+    } catch { 
+      if (!isInitial) toast.error('Failed to load messages.', { className: 'gv-toast' }); 
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -170,7 +175,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
         PartnerName:   targetUser.Name   || targetUser.name,
         PartnerAvatar: targetUser.ProfilePicUrl || targetUser.avatar,
       });
-      fetchMessages(targetUser.UserID || targetUser.id);
+      fetchMessages(targetUser.UserID || targetUser.id, true);
     }
   }, [isOpen, targetUser, fetchConversations, fetchMessages]);
 
@@ -441,7 +446,11 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
             </div>
           </div>
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-            {conversations.length === 0 ? (
+            {conversationsLoading && conversations.length === 0 ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 size={24} className="text-brand-500 animate-spin" />
+              </div>
+            ) : conversations.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <MessageSquare size={28} className="text-gray-200 mx-auto mb-3" />
                 <p className="text-xs text-gray-400">No conversations yet</p>

@@ -362,18 +362,22 @@ exports.getUsersBySkill = async (req, res, next) => {
 };
 
 // get public profile for portfolio page
+// Hardened: each sub-query is isolated so a single failure (e.g. deleted
+// reviewer, missing Experiences table data) never crashes the entire response.
 
 exports.getPublicProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // 1. Core Profile & Contact Info
+    // ── 1. Core Profile & Contact Info ──────────────────────────────────────
+    // NOTE: u.UiuEmail is required by the frontend Gmail compose flow.
     const [users] = await pool.query(
-      `SELECT u.UserID, u.RoleID, u.Name, u.Bio, u.PVP_Points, u.ProfilePicUrl, u.AverageRating, u.CreatedAt, u.PersonalEmail,
+      `SELECT u.UserID, u.RoleID, u.Name, u.UiuEmail, u.Bio, u.PVP_Points,
+              u.ProfilePicUrl, u.AverageRating, u.CreatedAt, u.PersonalEmail,
               p.WhatsAppNumber, r.RoleName, d.DeptName, d.DeptCode
        FROM Users u
-       JOIN Roles       r ON u.RoleID = r.RoleID
-       JOIN Departments d ON u.DeptID = d.DeptID
+       JOIN Roles            r ON u.RoleID = r.RoleID
+       JOIN Departments      d ON u.DeptID = d.DeptID
        LEFT JOIN User_Private_Info p ON u.UserID = p.UserID
        WHERE u.UserID = ?`,
       [id]
@@ -384,41 +388,61 @@ exports.getPublicProfile = async (req, res, next) => {
     }
     const user = users[0];
 
-    // 2. Gigs created by this user
-    const [gigs] = await pool.query(
-      `SELECT g.GigID, g.Title, g.Description, g.BasePrice,
-              gi.ImageUrl AS PrimaryImage
-       FROM Gigs g
-       LEFT JOIN Gig_Images gi ON gi.GigID = g.GigID AND gi.IsPrimary = TRUE
-       WHERE g.ContributorID = ?
-       ORDER BY g.CreatedAt DESC`,
-      [id]
-    );
-    user.Gigs = gigs;
+    // ── 2. Gigs created by this user ────────────────────────────────────────
+    // Wrapped in try-catch: if gigs query fails, return empty array instead
+    // of crashing the entire profile response.
+    try {
+      const [gigs] = await pool.query(
+        `SELECT g.GigID, g.Title, g.Description, g.BasePrice,
+                gi.ImageUrl AS PrimaryImage
+         FROM Gigs g
+         LEFT JOIN Gig_Images gi ON gi.GigID = g.GigID AND gi.IsPrimary = TRUE
+         WHERE g.ContributorID = ?
+         ORDER BY g.CreatedAt DESC`,
+        [id]
+      );
+      user.Gigs = gigs || [];
+    } catch (gigErr) {
+      console.error('getPublicProfile — Gigs sub-query failed:', gigErr.message);
+      user.Gigs = [];
+    }
 
-    // 3. Experiences
-    const [experiences] = await pool.query(
-      `SELECT Title, Company, StartDate, EndDate, Description 
-       FROM Experiences 
-       WHERE UserID = ? 
-       ORDER BY StartDate DESC`,
-      [id]
-    );
-    user.Experiences = experiences;
+    // ── 3. Experiences ──────────────────────────────────────────────────────
+    try {
+      const [experiences] = await pool.query(
+        `SELECT Title, Company, StartDate, EndDate, Description
+         FROM Experiences
+         WHERE UserID = ?
+         ORDER BY StartDate DESC`,
+        [id]
+      );
+      user.Experiences = experiences || [];
+    } catch (expErr) {
+      console.error('getPublicProfile — Experiences sub-query failed:', expErr.message);
+      user.Experiences = [];
+    }
 
-    // 4. Reviews received (where user is the contributor)
-    const [reviews] = await pool.query(
-      `SELECT r.Rating, r.Comment, r.CreatedAt, 
-              client.Name AS ReviewerName, client.ProfilePicUrl AS ReviewerPic
-       FROM Reviews r
-       JOIN Orders o ON r.OrderID = o.OrderID
-       JOIN Users client ON r.ReviewerID = client.UserID
-       WHERE o.ContributorID = ?
-       ORDER BY r.CreatedAt DESC
-       LIMIT 10`,
-      [id]
-    );
-    user.Reviews = reviews;
+    // ── 4. Reviews received (where user is the contributor) ─────────────────
+    // Uses LEFT JOIN on the reviewer so deleted/anonymized accounts don't
+    // break the entire query with a missing FK reference.
+    try {
+      const [reviews] = await pool.query(
+        `SELECT r.Rating, r.Comment, r.CreatedAt,
+                COALESCE(client.Name, 'GigVerse User')          AS ReviewerName,
+                COALESCE(client.ProfilePicUrl, NULL)             AS ReviewerPic
+         FROM Reviews r
+         JOIN Orders o ON r.OrderID = o.OrderID
+         LEFT JOIN Users client ON r.ReviewerID = client.UserID
+         WHERE o.ContributorID = ?
+         ORDER BY r.CreatedAt DESC
+         LIMIT 10`,
+        [id]
+      );
+      user.Reviews = reviews || [];
+    } catch (revErr) {
+      console.error('getPublicProfile — Reviews sub-query failed:', revErr.message);
+      user.Reviews = [];
+    }
 
     return res.status(200).json({ success: true, data: user });
   } catch (err) {

@@ -9,7 +9,7 @@ import {
   X, GripVertical, ShieldCheck, ArrowUpRight,
   ChevronsLeft, ChevronsRight, ShoppingCart, BarChart2,
   PieChart, Activity, TrendingDown, DollarSign, BarChart,
-  Code2, Pen, BookOpen, Megaphone, Monitor
+  Code2, Pen, BookOpen, Megaphone, Monitor, GraduationCap
 } from 'lucide-react';
 import { gigAPI, userAPI, searchAPI, orderAPI, dashboardAPI, messageAPI } from '../lib/api';
 import SmartGigEstimator from '../components/SmartGigEstimator';
@@ -26,6 +26,8 @@ const CATEGORY_ICON_MAP = {
   Tutoring:    BookOpen,
   Writing:     Megaphone,
   Marketing:   Monitor,
+  'Academic & Course Guidelines': GraduationCap,
+  'Career Mentorship & Grooming': Briefcase,
 };
 const FALLBACK_ICON = Briefcase;
 
@@ -44,6 +46,8 @@ const CATEGORY_COLOR_MAP = {
   Tutoring:    { color: '#f97316', lightColor: '#fff7ed' },
   Writing:     { color: '#8b5cf6', lightColor: '#f5f3ff' },
   Marketing:   { color: '#ec4899', lightColor: '#fdf2f8' },
+  'Academic & Course Guidelines': { color: '#059669', lightColor: '#d1fae5' },
+  'Career Mentorship & Grooming': { color: '#2563eb', lightColor: '#dbeafe' },
 };
 const FALLBACK_PALETTE = { color: '#8b5cf6', lightColor: '#f5f3ff' };
 
@@ -490,7 +494,7 @@ const NAV = [
   { icon: Wallet,          label: 'PVP Wallet',  to: '/wallet' },
 ];
 
-const CATEGORIES = ['All', 'Development', 'Design', 'Writing', 'Marketing', 'Tutoring'];
+const CATEGORIES = ['All', 'Development', 'Design', 'Writing', 'Marketing', 'Tutoring', 'Academic & Course Guidelines', 'Career Mentorship & Grooming'];
 
 function useDebounce(val, delay) {
   const [d, setD] = useState(val);
@@ -938,15 +942,21 @@ export default function WorkspaceHome() {
               </div>
             </div>
             <div className="flex gap-2 mb-5 flex-wrap">
-              {CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setActiveCat(cat)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150
-                    ${activeCategory === cat
-                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-brand-300 hover:text-brand-500'}`}>
-                  {cat}
-                </button>
-              ))}
+              {CATEGORIES.map(cat => {
+                const isPremium = cat === 'Academic & Course Guidelines' || cat === 'Career Mentorship & Grooming';
+                return (
+                  <button key={cat} onClick={() => setActiveCat(cat)}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150
+                      ${activeCategory === cat
+                        ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-brand-300 hover:text-brand-500'}
+                      ${isPremium ? (activeCategory === cat ? 'ring-2 ring-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:text-emerald-800') : ''}`}>
+                    {cat === 'Academic & Course Guidelines' && <GraduationCap size={13} />}
+                    {cat === 'Career Mentorship & Grooming' && <Briefcase size={13} />}
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
 
             {gigsLoading && (
@@ -980,15 +990,15 @@ export default function WorkspaceHome() {
                         <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-brand-50 text-brand-600 px-2.5 py-0.5 rounded-full mb-2">
                           {gig.DeptName || 'Campus'}
                         </span>
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug group-hover:text-brand-600 transition-colors">{gig.Title}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug transition-colors duration-200 cursor-pointer hover:text-emerald-600 font-medium">{gig.Title}</h3>
                         <div className="flex items-center gap-2 mb-3">
                           <span onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(`/profile/${gig.ContributorID}`); }}
                             className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-brand-gradient overflow-hidden hover:ring-2 hover:ring-brand-200 transition-all cursor-pointer">
                             {gig.ProfilePicUrl ? <img src={gig.ProfilePicUrl} alt="" className="w-full h-full object-cover" /> : gi}
                           </span>
                           <div className="min-w-0">
-                            <span onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(`/profile/${gig.ContributorID}`); }}
-                              className="text-xs font-medium text-gray-700 hover:text-brand-600 transition-colors truncate block cursor-pointer">{gig.ContributorName}</span>
+                            <Link to={`/profile/${gig.ContributorID}`} onClick={e => e.stopPropagation()}
+                              className="text-xs text-gray-700 truncate block transition-colors duration-200 cursor-pointer hover:text-emerald-600 font-medium">{gig.ContributorName}</Link>
                             <p className="text-[10px] font-semibold text-brand-500">{gig.PVP_Points ?? 0} PVP</p>
                           </div>
                           {Number(gig.AverageRating || 0) > 0 && (

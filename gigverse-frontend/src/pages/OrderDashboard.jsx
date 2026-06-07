@@ -235,7 +235,7 @@ export default function OrderDashboard() {
                           )}
                         </div>
                         <Link to={`/gigs/${order.GigID}`} onClick={e => e.stopPropagation()}
-                          className="font-semibold text-gray-900 text-sm hover:text-brand-600 transition-colors">
+                          className="font-semibold text-gray-900 text-sm transition-colors duration-200 cursor-pointer hover:text-emerald-600 font-medium">
                           {order.GigTitle}
                         </Link>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
@@ -244,7 +244,7 @@ export default function OrderDashboard() {
                             {new Date(order.CreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                           <span>Role: <strong className={client ? 'text-blue-600' : 'text-green-600'}>{client ? 'Client' : 'Contributor'}</strong></span>
-                          <span>With: <strong className="text-gray-700">{client ? order.ContributorName : order.ClientName}</strong></span>
+                          <span>With: <Link to={`/profile/${client ? order.ContributorID : order.ClientID}`} onClick={e => e.stopPropagation()} className="transition-colors duration-200 cursor-pointer hover:text-emerald-600 font-medium text-gray-700">{client ? order.ContributorName : order.ClientName}</Link></span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">

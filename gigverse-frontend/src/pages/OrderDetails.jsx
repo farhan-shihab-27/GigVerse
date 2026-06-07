@@ -91,6 +91,8 @@ export default function OrderDetails() {
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [showDisputeInput, setShowDisputeInput] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferEmail, setTransferEmail] = useState('');
 
   const userStr = localStorage.getItem('gv_user');
   const currentUser = userStr ? JSON.parse(userStr) : null;
@@ -267,7 +269,7 @@ export default function OrderDetails() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 flex-wrap mb-1">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">{order.GigTitle}</h1>
+              <Link to={`/gigs/${order.GigID}`} className="text-2xl sm:text-3xl font-extrabold text-gray-900 transition-colors duration-200 cursor-pointer hover:text-emerald-600">{order.GigTitle}</Link>
               <span className={`text-[11px] font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${statusMeta.color}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot} animate-pulse`} />
                 {statusMeta.label}
@@ -634,6 +636,16 @@ export default function OrderDetails() {
                   <MessageSquare size={15} /> Contact {isClient ? order.ContributorName : order.ClientName}
                 </button>
 
+                {/* Contributor: Transfer Order */}
+                {isContributor && !isTerminal && (
+                  <button
+                    onClick={() => setShowTransferModal(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl text-sm font-bold transition-all shadow-sm"
+                  >
+                    <RefreshCw size={15} /> Transfer Order / Refer
+                  </button>
+                )}
+
                 {/* Compensation notice */}
                 {revCount > 0 && isClient && !isTerminal && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -657,7 +669,7 @@ export default function OrderDetails() {
                     {order.ClientName?.[0]?.toUpperCase() || 'C'}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate">{order.ClientName}</p>
+                    <p className="text-xs font-bold text-gray-900 truncate transition-colors duration-200 hover:text-emerald-600 font-medium">{order.ClientName}</p>
                     <p className="text-[10px] text-blue-500 font-semibold">Client</p>
                   </div>
                   <ExternalLink size={12} className="text-gray-300 group-hover:text-gray-500 ml-auto shrink-0" />
@@ -667,7 +679,7 @@ export default function OrderDetails() {
                     {order.ContributorName?.[0]?.toUpperCase() || 'F'}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate">{order.ContributorName}</p>
+                    <p className="text-xs font-bold text-gray-900 truncate transition-colors duration-200 hover:text-emerald-600 font-medium">{order.ContributorName}</p>
                     <p className="text-[10px] text-brand-500 font-semibold">Contributor</p>
                   </div>
                   <ExternalLink size={12} className="text-gray-300 group-hover:text-gray-500 ml-auto shrink-0" />
@@ -738,6 +750,59 @@ export default function OrderDetails() {
               </div>
             ) : null}
             <button onClick={() => { setShowContactModal(false); setContactInfo(null); }} className="btn-secondary w-full mt-5 !text-sm">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Transfer Order Modal ── */}
+      {showTransferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={() => setShowTransferModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full animate-slide-up border border-gray-100" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-extrabold text-gray-900 mb-1 flex items-center gap-2">
+              <RefreshCw size={18} className="text-brand-500" /> Transfer Order
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">Refer this order to another contributor. You will lose access to it once transferred.</p>
+            
+            <div className="mb-4">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Recipient Email or User ID</label>
+              <input 
+                type="text" 
+                value={transferEmail} 
+                onChange={e => setTransferEmail(e.target.value)} 
+                placeholder="Enter UIU email or User ID..."
+                className="input-field !py-2.5 !text-sm mt-1"
+              />
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
+              <p className="text-[11px] font-semibold text-amber-800 flex items-center gap-1 mb-1">
+                <AlertTriangle size={11} /> Referral Bonus Note
+              </p>
+              <p className="text-[11px] text-amber-700">
+                If the recipient successfully completes this order, you may be eligible for a referral PVP bonus.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  doAction('transfer', async () => {
+                    await orderAPI.transferOrder(id, { recipientEmail: transferEmail });
+                    toast.success('Order transferred successfully!', { className: 'gv-toast', icon: '✅' });
+                    setShowTransferModal(false);
+                    setTransferEmail('');
+                  });
+                }} 
+                disabled={actionLoading === 'transfer' || !transferEmail.trim()}
+                className="flex-1 btn-primary !text-sm"
+              >
+                {actionLoading === 'transfer' ? <Loader2 size={15} className="animate-spin mr-2 inline" /> : null}
+                Confirm Transfer
+              </button>
+              <button onClick={() => setShowTransferModal(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-xl text-sm font-bold transition-colors">
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

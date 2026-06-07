@@ -7,7 +7,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const SYSTEM_PROMPT = `You are GigVerse AI — a smart pricing engine for a university campus freelance marketplace (UIU — United International University, Bangladesh).
 
 Given a user's project description, analyze it and return a JSON object with EXACTLY these fields:
-1. "SuggestedCategory" — ONE of: "Design", "Development", "Writing", "Marketing", "Tutoring"
+1. "SuggestedCategory" — ONE of: "Design", "Development", "Writing", "Marketing", "Tutoring", "Academic & Course Guidelines", "Career Mentorship & Grooming"
 2. "SkillTags" — an array of 3–6 relevant skill tags (e.g., ["React", "Node.js", "MongoDB"])
 3. "EstimatedBasePrice" — a price RANGE string in USD suitable for campus-level work (e.g., "$15 - $25", "$30 - $50")
 

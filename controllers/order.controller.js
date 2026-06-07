@@ -91,7 +91,19 @@ exports.acceptOrder = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Only the contributor can accept this order.' });
     }
 
-    if (order.OrderStatus !== 'Pending_Acceptance') {
+    // Handle idempotency: if already In_Progress, return success to unlock the frontend UI
+    if (order.OrderStatus === 'In_Progress') {
+      conn.release();
+      return res.json({
+        success: true,
+        message: 'Order is already accepted and in progress.',
+        data: { orderId: Number(orderId), orderStatus: 'In_Progress', deliveryDeadline: order.DeliveryDeadline || new Date().toISOString() },
+      });
+    }
+
+    // Defensive state validation allowing multiple variants of Pending
+    const validStates = ['Pending', 'Pending_Acceptance', 'Pending Acceptance', 'Custom_Pending'];
+    if (!validStates.includes(order.OrderStatus)) {
       conn.release();
       return res.status(400).json({ success: false, message: `Order cannot be accepted in "${order.OrderStatus}" state.` });
     }
@@ -468,6 +480,75 @@ exports.createCustomOffer = async (req, res, next) => {
       success: true,
       message: 'Custom offer created. Awaiting confirmation and payment.',
       data: { orderId, gigId, clientId: Number(clientId), contributorId: Number(contributorId), amount: Number(amount), orderStatus: 'Custom_Pending' },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Transfer Order (Contributor Referral) ───────────────────────────────────
+exports.transferOrder = async (req, res, next) => {
+  try {
+    const orderId = req.params.id;
+    const userId = req.user.userId;
+    const { recipientEmail } = req.body;
+
+    if (!recipientEmail) {
+      return res.status(400).json({ success: false, message: 'Recipient email or ID is required.' });
+    }
+
+    const [orders] = await pool.query('SELECT * FROM Orders WHERE OrderID = ?', [orderId]);
+    if (orders?.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+    const order = orders[0];
+
+    if (order.ContributorID !== userId) {
+      return res.status(403).json({ success: false, message: 'Only the current contributor can transfer this order.' });
+    }
+
+    // Find recipient by email or ID
+    const [recipients] = await pool.query(
+      'SELECT UserID, Name FROM Users WHERE PersonalEmail = ? OR UserID = ?', 
+      [recipientEmail, recipientEmail]
+    );
+    if (recipients?.length === 0) {
+      return res.status(404).json({ success: false, message: 'Recipient not found.' });
+    }
+    const recipient = recipients[0];
+
+    if (recipient.UserID === userId) {
+      return res.status(400).json({ success: false, message: 'You cannot transfer an order to yourself.' });
+    }
+    if (recipient.UserID === order.ClientID) {
+      return res.status(400).json({ success: false, message: 'You cannot transfer an order to the client.' });
+    }
+
+    // Update contributor
+    await pool.query('UPDATE Orders SET ContributorID = ? WHERE OrderID = ?', [recipient.UserID, orderId]);
+
+    // Notify new contributor
+    await createNotification(
+      recipient.UserID,
+      'order',
+      'Order Transferred to You',
+      `An order has been referred to you. Check your dashboard to begin work.`,
+      Number(orderId)
+    );
+
+    // Notify client
+    await createNotification(
+      order.ClientID,
+      'order',
+      'Order Contributor Changed',
+      `Your order's contributor has transferred the work to ${recipient.Name || 'another contributor'}.`,
+      Number(orderId)
+    );
+
+    return res.json({
+      success: true,
+      message: 'Order transferred successfully.',
+      data: { orderId: Number(orderId), newContributorId: recipient.UserID }
     });
   } catch (err) {
     next(err);

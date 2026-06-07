@@ -33,7 +33,11 @@ export default function UserList() {
         
         <div className="text-center mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">
-            Search Results for <span className="text-gradient">"{skill}"</span>
+            {skill ? (
+              <>Search Results for <span className="text-gradient">"{skill}"</span></>
+            ) : (
+              <>Top Campus <span className="text-gradient">Talent</span></>
+            )}
           </h1>
           <p className="text-gray-400 text-sm">Find top talent in the UIU community</p>
         </div>

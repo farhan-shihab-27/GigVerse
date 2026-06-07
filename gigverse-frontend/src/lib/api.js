@@ -79,6 +79,7 @@ export const orderAPI = {
   updateMilestone: (id, data) => api.patch(`/orders/${id}/milestone`, data),
   approveMilestone: (id, data) => api.patch(`/orders/${id}/milestone/approve`, data),
   createCustomOffer: (data) => api.post('/orders/custom-offer', data),
+  transferOrder: (id, data) => api.post(`/orders/${id}/transfer`, data),
 };
 
 // ── Search ────────────────────────────────────────────────────────────────────

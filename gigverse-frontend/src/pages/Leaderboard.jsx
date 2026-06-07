@@ -100,7 +100,7 @@ export default function Leaderboard() {
                       : initials}
                   </Link>
                   {/* Name */}
-                  <Link to={`/profile/${u.UserID}`} className="font-bold text-gray-900 text-sm mb-0.5 hover:text-brand-600 transition-colors block">
+                  <Link to={`/profile/${u.UserID}`} className="font-bold text-gray-900 text-sm mb-0.5 transition-colors duration-200 cursor-pointer hover:text-emerald-600 font-medium block">
                     {u.Name}
                   </Link>
                   <p className="text-[10px] font-semibold text-brand-500 mb-3">{formatRoleLabel(u.RoleName, u.DeptName || 'CSE')}</p>
@@ -159,7 +159,7 @@ export default function Leaderboard() {
                   </Link>
                   <div className="min-w-0">
                     <Link to={`/profile/${u.UserID}`}
-                      className="text-sm font-semibold text-gray-900 truncate hover:text-brand-600 transition-colors block">
+                      className="text-sm font-semibold text-gray-900 truncate transition-colors duration-200 cursor-pointer hover:text-emerald-600 font-medium block">
                       {u.Name}
                     </Link>
                     <p className="text-[10px] text-brand-500 font-semibold truncate">{formatRoleLabel(u.RoleName, u.DeptName || 'CSE')}</p>
