@@ -536,6 +536,7 @@ export default function MilestoneEscrowTracker({
   orderStatus = '',
   orderAmount = 0,
   onStepUpdate = () => {},
+  onFinalMilestoneApproval = null,
 }) {
   const [advancing, setAdvancing]       = useState(false);
   const [approving, setApproving]       = useState(null);
@@ -579,6 +580,11 @@ export default function MilestoneEscrowTracker({
   // ── Approve milestone & release funds ────────────────────────────────────
   const handleApprove = async (step) => {
     if (!canClientApprove(step)) return;
+    // Intercept final milestone (step 4) — delegate to parent for rating/feedback modal
+    if (step === 4 && onFinalMilestoneApproval) {
+      onFinalMilestoneApproval(step);
+      return;
+    }
     setApproving(step);
     try {
       const res = await orderAPI.approveMilestone(orderId, { step });

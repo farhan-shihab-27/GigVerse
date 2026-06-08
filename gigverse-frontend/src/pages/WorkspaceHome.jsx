@@ -11,7 +11,7 @@ import {
   PieChart, Activity, TrendingDown, DollarSign, BarChart,
   Code2, Pen, BookOpen, Megaphone, Monitor, GraduationCap
 } from 'lucide-react';
-import { gigAPI, userAPI, searchAPI, orderAPI, dashboardAPI, messageAPI } from '../lib/api';
+import { gigAPI, userAPI, searchAPI, orderAPI, dashboardAPI, messageAPI, reviewAPI } from '../lib/api';
 import SmartGigEstimator from '../components/SmartGigEstimator';
 import GigFormModal from '../components/GigFormModal';
 import ChatDrawer from '../components/ChatDrawer';
@@ -59,15 +59,8 @@ const DEMO_DISTRIBUTION = [
   { category: 'Marketing', amountBDT: 10000, count: 2, ...CATEGORY_COLOR_MAP.Marketing },
 ];
 
-/**
- * API-ready shape: dashboardAPI.getRecentReviews()
- * Returns: { name, rating, text, date, avatar }[]
- */
-const MOCK_REVIEWS = [
-  { id: 1, name: 'Rahim Uddin',   rating: 5, text: 'Outstanding work! Delivered well ahead of schedule with exceptional quality.', date: '2 days ago', initials: 'RU' },
-  { id: 2, name: 'Fatema Khanom', rating: 4, text: 'Very professional, clear communication throughout the project.', date: '1 week ago', initials: 'FK' },
-  { id: 3, name: 'Sakib Hassan',  rating: 5, text: 'Exceeded all expectations. Will definitely hire again for future projects.', date: '2 weeks ago', initials: 'SH' },
-];
+// MOCK_REVIEWS removed — now fetched live from reviewAPI.getByContributor(userId)
+
 
 // ── Review Analytics Modal ───────────────────────────────────────────────────────────
 /**
@@ -78,16 +71,14 @@ const MOCK_REVIEWS = [
  *   avgRating  {number}     — from profile.AverageRating
  *   reviews    {object[]}   — MOCK_REVIEWS (replace with API)
  */
-function ReviewAnalyticsModal({ isOpen, onClose, avgRating, reviews }) {
-  // Rating distribution mock (API-ready: replace with real counts)
-  const distribution = [
-    { stars: 5, count: 8,  pct: 62 },
-    { stars: 4, count: 3,  pct: 23 },
-    { stars: 3, count: 1,  pct: 8  },
-    { stars: 2, count: 1,  pct: 5  },
-    { stars: 1, count: 0,  pct: 0  },
-  ];
-  const totalReviews = distribution.reduce((s, d) => s + d.count, 0);
+function ReviewAnalyticsModal({ isOpen, onClose, avgRating, reviews = [] }) {
+  // Compute live star distribution from real reviews array
+  const distribution = [5, 4, 3, 2, 1].map(stars => {
+    const count = reviews.filter(r => Number(r.Rating) === stars).length;
+    const pct   = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+    return { stars, count, pct };
+  });
+  const totalReviews = reviews.length;
 
   if (!isOpen) return null;
 
@@ -164,27 +155,42 @@ function ReviewAnalyticsModal({ isOpen, onClose, avgRating, reviews }) {
           {/* Recent reviews */}
           <div>
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recent Reviews</p>
-            <div className="space-y-3">
-              {reviews.map(r => (
-                <div key={r.id} className="flex gap-3 p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50/30 transition-all">
-                  <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                    {r.initials}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold text-gray-900">{r.name}</span>
-                      <div className="flex items-center gap-0.5">
-                        {[1,2,3,4,5].map(s => (
-                          <Star key={s} size={9} className={s <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200 fill-gray-200'} />
-                        ))}
+            {reviews.length === 0 ? (
+              <div className="text-center py-6">
+                <Star size={28} className="text-gray-200 mx-auto mb-2" />
+                <p className="text-xs text-gray-400">No reviews yet. Complete orders to receive ratings.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reviews.slice(0, 5).map((r, idx) => {
+                  const reviewerName = r.ReviewerName || 'Anonymous';
+                  const initials = reviewerName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  const relDate = r.CreatedAt
+                    ? new Date(r.CreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : '';
+                  return (
+                    <div key={r.ReviewID || idx} className="flex gap-3 p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50/30 transition-all">
+                      <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                        {initials}
                       </div>
-                      <span className="text-[10px] text-gray-400 ml-auto shrink-0">{r.date}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-gray-900">{reviewerName}</span>
+                          <div className="flex items-center gap-0.5">
+                            {[1,2,3,4,5].map(s => (
+                              <Star key={s} size={9} className={s <= Number(r.Rating) ? 'fill-amber-400 text-amber-400' : 'text-gray-200 fill-gray-200'} />
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-gray-400 ml-auto shrink-0">{relDate}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{r.Comment || r.text || ''}</p>
+                        {r.GigTitle && <p className="text-[10px] text-brand-400 font-semibold mt-1 truncate">On: {r.GigTitle}</p>}
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{r.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -520,6 +526,8 @@ export default function WorkspaceHome() {
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   // Review Analytics Modal state — triggered by Avg. Rating card click
   const [showReviewModal, setShowReviewModal] = useState(false);
+  // ── Live reviews for the Review Analytics Modal ──────────────────────────
+  const [myReviews, setMyReviews]   = useState([]);
   // ── Telemetry state — live dashboard data from /api/dashboard/telemetry ──
   const [telemetry, setTelemetry]             = useState(null);
   const [telemetryLoading, setTelemetryLoading] = useState(true);
@@ -535,7 +543,17 @@ export default function WorkspaceHome() {
 
   useEffect(() => {
     userAPI.getMyProfile()
-      .then(r => { if (r?.data?.data) setProfile(r.data.data); })
+      .then(r => {
+        if (!r?.data?.data) return;
+        const profileData = r.data.data;
+        setProfile(profileData);
+        // Fetch this user's reviews as a contributor so the Analytics Modal is live
+        if (profileData.UserID) {
+          reviewAPI.getByContributor(profileData.UserID)
+            .then(rv => setMyReviews(Array.isArray(rv?.data?.data) ? rv.data.data : []))
+            .catch(() => {});
+        }
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -1142,7 +1160,7 @@ export default function WorkspaceHome() {
       isOpen={showReviewModal}
       onClose={() => setShowReviewModal(false)}
       avgRating={profile?.AverageRating || 0}
-      reviews={MOCK_REVIEWS}
+      reviews={myReviews}
     />
     </>
   );

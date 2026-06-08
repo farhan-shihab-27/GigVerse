@@ -213,7 +213,7 @@ exports.approveMilestone = async (req, res, next) => {
   try {
     const orderId = req.params.id;
     const userId  = req.user.userId;
-    const { step } = req.body;
+    const { step, rating, feedback } = req.body;
 
     if (!step || step < 1 || step > 4) {
       conn.release();
@@ -278,8 +278,52 @@ exports.approveMilestone = async (req, res, next) => {
       [orderId]
     );
     if (allMs[0].released >= 4) {
+      // ── Mandatory Rating & Feedback Gate ──────────────────────────────
+      if (!rating || !feedback || String(feedback).trim().length < 10) {
+        await conn.rollback();
+        conn.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Rating (1-5) and feedback (min 10 characters) are required to complete the order.',
+        });
+      }
+      const ratingInt = parseInt(rating, 10);
+      if (ratingInt < 1 || ratingInt > 5) {
+        await conn.rollback();
+        conn.release();
+        return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5.' });
+      }
+
+      // Mark order completed
       await conn.query("UPDATE Orders SET OrderStatus = 'Completed', PaymentStatus = 'Released' WHERE OrderID = ?", [orderId]);
       await conn.query("UPDATE Payments SET Status = 'Completed' WHERE OrderID = ?", [orderId]);
+
+      // ── Save Review ────────────────────────────────────────────────────
+      await conn.query(
+        'INSERT INTO Reviews (OrderID, ReviewerID, Rating, Comment) VALUES (?, ?, ?, ?)',
+        [orderId, userId, ratingInt, feedback.trim()]
+      );
+
+      // PVP bonus for 5-star review
+      if (ratingInt === 5) {
+        await conn.query('UPDATE Users SET PVP_Points = PVP_Points + 10 WHERE UserID = ?', [order.ContributorID]);
+      }
+
+      // Recalculate contributor's average rating
+      const [[avgRow]] = await conn.query(
+        'SELECT AVG(r.Rating) AS avgRating FROM Reviews r JOIN Orders o ON r.OrderID = o.OrderID WHERE o.ContributorID = ?',
+        [order.ContributorID]
+      );
+      await conn.query(
+        'UPDATE Users SET AverageRating = ? WHERE UserID = ?',
+        [Number(avgRow?.avgRating || 0).toFixed(2), order.ContributorID]
+      );
+
+      // ── Auto-Report Engine ─────────────────────────────────────────────
+      await conn.query(
+        'INSERT INTO Reports (reporter_id, reported_user_id, order_id, reason, is_auto_generated) VALUES (?, ?, ?, ?, 1)',
+        [userId, order.ContributorID, orderId, feedback.trim()]
+      );
     }
 
     // Send system chat message about the release

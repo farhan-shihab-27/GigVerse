@@ -6,9 +6,9 @@ import {
   ArrowLeft, ClipboardList, Loader2, AlertCircle, Clock, CheckCircle2,
   ShieldCheck, Package, RefreshCw, XCircle, AlertTriangle, MessageSquare,
   Phone, Mail, ExternalLink, DollarSign, TrendingUp, Calendar, User,
-  ChevronRight, Zap, Info, Star
+  ChevronRight, Zap, Info, Star, Flag
 } from 'lucide-react';
-import { orderAPI, paymentAPI } from '../lib/api';
+import { orderAPI, paymentAPI, reportAPI, reviewAPI } from '../lib/api';
 import MilestoneEscrowTracker from '../components/MilestoneEscrowTracker';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
 import toast from 'react-hot-toast';
@@ -93,6 +93,22 @@ export default function OrderDetails() {
   const [showDisputeInput, setShowDisputeInput] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferEmail, setTransferEmail] = useState('');
+  // Mandatory Rating & Feedback Modal state (release-gate)
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [ratingHover, setRatingHover] = useState(0);
+  const [pendingFinalStep, setPendingFinalStep] = useState(null);
+  // Report User Modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  // Standalone Leave Feedback Modal state (mutual — for both roles)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackHover, setFeedbackHover] = useState(0);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
 
   const userStr = localStorage.getItem('gv_user');
   const currentUser = userStr ? JSON.parse(userStr) : null;
@@ -116,6 +132,14 @@ export default function OrderDetails() {
     if (!currentUser) { navigate('/auth', { replace: true }); return; }
     fetchOrder();
   }, [fetchOrder]);
+
+  // Check if the current user has already left standalone feedback for this order
+  useEffect(() => {
+    if (!currentUser || !id) return;
+    reviewAPI.getMyReviewForOrder(id, currentUser.UserID)
+      .then(res => { if (res.data?.reviewed) setAlreadyReviewed(true); })
+      .catch(() => {}); // Silently ignore errors — UI degrades gracefully
+  }, [id, currentUser?.UserID]);
 
   const isClient = order ? order.ClientID === currentUser?.UserID : false;
   const isContributor = order ? order.ContributorID === currentUser?.UserID : false;
@@ -145,11 +169,9 @@ export default function OrderDetails() {
   });
 
   const handleRelease = () => {
-    if (!confirm('Release full escrow payment to the contributor?')) return;
-    doAction('release', async () => {
-      await paymentAPI.releaseEscrow({ orderId: id });
-      toast.success('Payment released!', { className: 'gv-toast', icon: '💰' });
-    });
+    // Intercept: open rating modal instead of direct release
+    setPendingFinalStep('release');
+    setShowRatingModal(true);
   };
 
   const handleCancel = () => {
@@ -178,6 +200,109 @@ export default function OrderDetails() {
       setContactInfo(res.data.data);
     } catch { setContactInfo({ error: true }); }
     finally { setLoadingContact(false); }
+  };
+
+  // ── Final Milestone Interception (from MilestoneEscrowTracker) ──────────────
+  const handleFinalMilestoneApproval = (step) => {
+    setPendingFinalStep(step);
+    setShowRatingModal(true);
+  };
+
+  // ── Submit Rating + Feedback → triggers final milestone or full release ─────
+  const handleRatingSubmit = () => {
+    if (ratingValue < 1 || ratingValue > 5) {
+      toast.error('Please select a star rating (1-5).', { className: 'gv-toast' });
+      return;
+    }
+    if (feedbackText.trim().length < 10) {
+      toast.error('Feedback must be at least 10 characters.', { className: 'gv-toast' });
+      return;
+    }
+
+    // Capture current values before any state resets
+    const capturedRating   = ratingValue;
+    const capturedFeedback = feedbackText.trim();
+    const capturedStep     = pendingFinalStep;
+
+    if (capturedStep === 'release') {
+      // Full release path — approve final milestone atomically (backend handles escrow release + review + order completion)
+      doAction('release', async () => {
+        await orderAPI.approveMilestone(id, { step: 4, rating: capturedRating, feedback: capturedFeedback });
+        toast.success('Payment released & review submitted!', { className: 'gv-toast', icon: '💰' });
+        // Close modal only after success
+        setShowRatingModal(false);
+        setRatingValue(0);
+        setFeedbackText('');
+        setPendingFinalStep(null);
+      });
+    } else {
+      // Milestone 4 approval path
+      doAction('release', async () => {
+        const res = await orderAPI.approveMilestone(id, { step: capturedStep, rating: capturedRating, feedback: capturedFeedback });
+        const d = res.data?.data;
+        toast.success(
+          `৳${d?.releaseTaka?.toLocaleString() || '—'} released! Review submitted! 🎉`,
+          { className: 'gv-toast', icon: '💰', duration: 5000 }
+        );
+        // Close modal only after success
+        setShowRatingModal(false);
+        setRatingValue(0);
+        setFeedbackText('');
+        setPendingFinalStep(null);
+      });
+    }
+  };
+
+  // ── Submit Standalone Mutual Feedback (Leave Feedback button) ───────────────
+  const handleFeedbackSubmit = async () => {
+    if (feedbackRating < 1 || feedbackRating > 5) {
+      toast.error('Please select a star rating between 1 and 5.', { className: 'gv-toast' });
+      return;
+    }
+    if (feedbackComment.trim().length < 10) {
+      toast.error('Your feedback must be at least 10 characters long.', { className: 'gv-toast' });
+      return;
+    }
+    setFeedbackSubmitting(true);
+    try {
+      const revieweeId = isClient ? order.ContributorID : order.ClientID;
+      await reviewAPI.submitMutualFeedback({
+        order_id:    Number(id),
+        reviewer_id: currentUser.UserID,
+        reviewee_id: revieweeId,
+        rating:      feedbackRating,
+        comment:     feedbackComment.trim(),
+      });
+      setAlreadyReviewed(true);
+      setShowFeedbackModal(false);
+      setFeedbackRating(0);
+      setFeedbackComment('');
+      setFeedbackHover(0);
+      toast.success(
+        `Feedback submitted! ${feedbackRating === 5 ? '+10 PVP Points awarded to them. 🏆' : '✅'}`,
+        { className: 'gv-toast', duration: 4500 }
+      );
+    } catch (e) {
+      const msg = e.response?.data?.message || 'Failed to submit feedback. Please try again.';
+      toast.error(msg, { className: 'gv-toast' });
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
+  // ── Submit Manual Report ────────────────────────────────────────────────────
+  const handleReportSubmit = () => {
+    if (!reportReason.trim()) {
+      toast.error('Please describe the reason for reporting.', { className: 'gv-toast' });
+      return;
+    }
+    const reportedUserId = isClient ? order.ContributorID : order.ClientID;
+    doAction('report', async () => {
+      await reportAPI.submit({ orderId: Number(id), reportedUserId, reason: reportReason.trim() });
+      toast.success('Report submitted. Our team will review it.', { className: 'gv-toast', icon: '🛡️' });
+    });
+    setShowReportModal(false);
+    setReportReason('');
   };
 
   // ── Computed values ──────────────────────────────────────────────────────────
@@ -336,6 +461,75 @@ export default function OrderDetails() {
           )}
         </div>
 
+        {/* ── Work Progress Bar ── */}
+        {hasTracker && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-sm">
+                  <TrendingUp size={14} className="text-white" />
+                </div>
+                <h3 className="text-sm font-extrabold text-gray-900">Work Progress</h3>
+              </div>
+              <span className={`text-xs font-extrabold px-2.5 py-1 rounded-full border ${
+                escrowPct >= 100
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+                {escrowPct}%
+              </span>
+            </div>
+            <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200/60">
+              {[25, 50, 75].map(p => (
+                <div key={p} className="absolute top-0 bottom-0 w-px bg-white/80 z-10" style={{ left: `${p}%` }} />
+              ))}
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${
+                  escrowPct >= 100
+                    ? 'bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500'
+                    : escrowPct > 0
+                      ? 'bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-500'
+                      : ''
+                }`}
+                style={{ width: `${escrowPct}%` }}
+              >
+                {escrowPct > 0 && escrowPct < 100 && (
+                  <div className="absolute inset-0 overflow-hidden">
+                    <div
+                      className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite]"
+                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-between mt-2">
+              {milestones.map((m, i) => {
+                const isDone = m.Status === 'funds_released';
+                const isAwait = m.Status === 'submitted_by_freelancer';
+                return (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all duration-500 ${
+                      isDone
+                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200'
+                        : isAwait
+                          ? 'bg-amber-100 border-amber-400 text-amber-700 animate-pulse'
+                          : 'bg-white border-gray-200 text-gray-400'
+                    }`}>
+                      {isDone ? '✓' : i + 1}
+                    </div>
+                    <span className={`text-[9px] font-semibold ${
+                      isDone ? 'text-emerald-600' : isAwait ? 'text-amber-600' : 'text-gray-300'
+                    }`}>
+                      {(i + 1) * 25}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Main Content Grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -369,6 +563,7 @@ export default function OrderDetails() {
                     orderStatus={order.OrderStatus}
                     orderAmount={order.Amount}
                     onStepUpdate={() => fetchOrder()}
+                    onFinalMilestoneApproval={handleFinalMilestoneApproval}
                   />
                 </div>
               </div>
@@ -409,19 +604,41 @@ export default function OrderDetails() {
 
             {/* Completed */}
             {order.OrderStatus === 'Completed' && (
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-green-200 shadow-sm p-6 flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-green-200 shrink-0">
-                  <CheckCircle2 size={28} className="text-white" />
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-green-200 shadow-sm p-6 space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-green-200 shrink-0">
+                    <CheckCircle2 size={28} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-green-900 text-lg">Order Completed! 🎉</h3>
+                    <p className="text-sm text-green-700">All milestones approved. ৳{Number(order.Amount).toLocaleString()} fully released to the contributor.</p>
+                    {!['', null, undefined].includes(order.ContributorName) && (
+                      <p className="text-xs text-green-600 font-semibold mt-1 inline-flex items-center gap-1">
+                        <Star size={11} /> Review submitted for {order.ContributorName}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-green-900 text-lg">Order Completed! 🎉</h3>
-                  <p className="text-sm text-green-700">All milestones approved. ৳{Number(order.Amount).toLocaleString()} fully released to the contributor.</p>
-                  {!['', null, undefined].includes(order.ContributorName) && (
-                    <Link to={`/profile/${order.ContributorID}`} className="text-xs text-green-600 font-semibold hover:underline mt-1 inline-flex items-center gap-1">
-                      <Star size={11} /> Leave a review for {order.ContributorName}
-                    </Link>
-                  )}
-                </div>
+                {/* Leave Feedback — always visible inside the Completed banner for both roles */}
+                {(isClient || isContributor) && (
+                  <button
+                    onClick={() => {
+                      if (alreadyReviewed) {
+                        toast('You have already submitted feedback for this order.', { className: 'gv-toast', icon: '⭐' });
+                        return;
+                      }
+                      setShowFeedbackModal(true);
+                    }}
+                    className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
+                      alreadyReviewed
+                        ? 'bg-white/70 text-emerald-600 border-2 border-emerald-300 cursor-default'
+                        : 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white shadow-md shadow-amber-200 hover:shadow-lg hover:shadow-amber-300'
+                    }`}
+                  >
+                    <Star size={15} className={alreadyReviewed ? 'fill-emerald-500' : ''} />
+                    {alreadyReviewed ? 'Feedback Submitted ✓' : 'Leave Feedback'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -628,6 +845,8 @@ export default function OrderDetails() {
                   </div>
                 )}
 
+
+
                 {/* Contact counterpart */}
                 <button
                   onClick={handleContact}
@@ -635,6 +854,16 @@ export default function OrderDetails() {
                 >
                   <MessageSquare size={15} /> Contact {isClient ? order.ContributorName : order.ClientName}
                 </button>
+
+                {/* Report User */}
+                {!isTerminal && (
+                  <button
+                    onClick={() => setShowReportModal(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-red-100 text-red-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 rounded-2xl text-sm font-bold transition-all"
+                  >
+                    <Flag size={15} /> Report User
+                  </button>
+                )}
 
                 {/* Contributor: Transfer Order */}
                 {isContributor && !isTerminal && (
@@ -818,6 +1047,282 @@ export default function OrderDetails() {
           fetchOrder();
         }}
       />
+
+      {/* ── Mandatory Rating & Feedback Modal ── */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={() => { setShowRatingModal(false); setRatingValue(0); setFeedbackText(''); setPendingFinalStep(null); }}>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full animate-slide-up border border-gray-100" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-200">
+                <Star size={24} className="text-white" />
+              </div>
+              <h3 className="text-lg font-extrabold text-gray-900">Rate & Complete Order</h3>
+              <p className="text-xs text-gray-400 mt-1">Your rating and feedback are mandatory before releasing final payment.</p>
+            </div>
+
+            {/* Star Rating */}
+            <div className="mb-5">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Your Rating</label>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRatingValue(star)}
+                    onMouseEnter={() => setRatingHover(star)}
+                    onMouseLeave={() => setRatingHover(0)}
+                    className="transition-all duration-200 hover:scale-125 active:scale-95 focus:outline-none"
+                  >
+                    <Star
+                      size={32}
+                      className={`transition-colors duration-200 ${
+                        star <= (ratingHover || ratingValue)
+                          ? 'text-amber-400 fill-amber-400 drop-shadow-sm'
+                          : 'text-gray-200'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              {ratingValue > 0 && (
+                <p className="text-center text-xs font-bold text-amber-600 mt-1.5">
+                  {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][ratingValue]}
+                </p>
+              )}
+            </div>
+
+            {/* Feedback Textarea */}
+            <div className="mb-5">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Written Feedback</label>
+              <textarea
+                value={feedbackText}
+                onChange={e => setFeedbackText(e.target.value)}
+                placeholder="Describe your experience working with this contributor (min 10 characters)..."
+                rows={4}
+                className="input-field !text-xs !py-2.5 resize-none mt-1"
+              />
+              <p className={`text-[10px] mt-1 font-medium ${
+                feedbackText.trim().length >= 10 ? 'text-emerald-500' : 'text-gray-300'
+              }`}>
+                {feedbackText.trim().length}/10 minimum characters
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleRatingSubmit}
+                disabled={ratingValue < 1 || feedbackText.trim().length < 10 || actionLoading === 'release'}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-green-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading === 'release' ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                Submit & Release Payment
+              </button>
+              <button
+                onClick={() => { setShowRatingModal(false); setRatingValue(0); setFeedbackText(''); setPendingFinalStep(null); }}
+                className="px-4 py-3 text-gray-500 hover:bg-gray-100 rounded-2xl text-sm font-bold transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Standalone Leave Feedback Modal (Mutual — Both Roles) ── */}
+      {showFeedbackModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
+          onClick={() => { setShowFeedbackModal(false); setFeedbackRating(0); setFeedbackComment(''); setFeedbackHover(0); }}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-sm animate-slide-up overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* ── Modal Header ── */}
+            <div className="bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 p-6 text-center relative overflow-hidden">
+              {/* Decorative rings */}
+              <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
+              <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+              <div className="relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-3 shadow-lg border border-white/30">
+                  <Star size={26} className="text-white fill-white" />
+                </div>
+                <h3 className="text-xl font-extrabold text-white tracking-tight">Leave Feedback</h3>
+                <p className="text-white/80 text-xs mt-1 font-medium">
+                  Rating for <span className="font-bold text-white">{isClient ? order.ContributorName : order.ClientName}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* ── Modal Body ── */}
+            <div className="p-6">
+              {/* ── Interactive Star Rating ── */}
+              <div className="mb-6">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center mb-3">
+                  Select Your Rating
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFeedbackRating(star)}
+                      onMouseEnter={() => setFeedbackHover(star)}
+                      onMouseLeave={() => setFeedbackHover(0)}
+                      className="focus:outline-none transition-all duration-150 hover:scale-125 active:scale-95"
+                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                    >
+                      {/* SVG Star for crisp rendering */}
+                      <svg
+                        width="36"
+                        height="36"
+                        viewBox="0 0 24 24"
+                        className={`transition-all duration-200 ${
+                          star <= (feedbackHover || feedbackRating)
+                            ? 'drop-shadow-[0_2px_6px_rgba(251,146,60,0.7)]'
+                            : ''
+                        }`}
+                        fill={star <= (feedbackHover || feedbackRating) ? '#F59E0B' : '#E5E7EB'}
+                        stroke={star <= (feedbackHover || feedbackRating) ? '#D97706' : '#D1D5DB'}
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+                {/* Rating label */}
+                <div className="text-center mt-2 h-5">
+                  {feedbackRating > 0 && (
+                    <span className={`text-xs font-extrabold tracking-wide ${
+                      feedbackRating === 5 ? 'text-amber-500' :
+                      feedbackRating === 4 ? 'text-green-500' :
+                      feedbackRating === 3 ? 'text-blue-500' :
+                      feedbackRating === 2 ? 'text-orange-500' : 'text-red-500'
+                    }`}>
+                      {['', '😞 Poor', '😐 Fair', '🙂 Good', '😊 Great', '🌟 Excellent!'][feedbackRating]}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Written Feedback Textarea ── */}
+              <div className="mb-5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">
+                  Written Feedback
+                </label>
+                <textarea
+                  value={feedbackComment}
+                  onChange={e => setFeedbackComment(e.target.value)}
+                  placeholder={`Share your experience working with ${isClient ? order.ContributorName : order.ClientName}...`}
+                  rows={4}
+                  maxLength={1000}
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-amber-300 focus:ring-2 focus:ring-amber-100 focus:outline-none text-xs text-gray-700 placeholder-gray-300 resize-none transition-all duration-200 bg-gray-50 focus:bg-white"
+                />
+                <div className="flex justify-between mt-1.5">
+                  <span className={`text-[10px] font-semibold ${
+                    feedbackComment.trim().length >= 10 ? 'text-emerald-500' : 'text-gray-300'
+                  }`}>
+                    {feedbackComment.trim().length >= 10 ? '✓ Minimum met' : `${feedbackComment.trim().length}/10 min characters`}
+                  </span>
+                  <span className="text-[10px] text-gray-300">{feedbackComment.length}/1000</span>
+                </div>
+              </div>
+
+              {/* ── Action Buttons ── */}
+              <div className="flex gap-2.5">
+                <button
+                  onClick={handleFeedbackSubmit}
+                  disabled={feedbackRating < 1 || feedbackComment.trim().length < 10 || feedbackSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-2xl text-sm font-extrabold transition-all shadow-md shadow-amber-200 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                  id="submit-feedback-btn"
+                >
+                  {feedbackSubmitting ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <Star size={15} className="fill-white" />
+                      Submit Rating
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setShowFeedbackModal(false); setFeedbackRating(0); setFeedbackComment(''); setFeedbackHover(0); }}
+                  disabled={feedbackSubmitting}
+                  className="px-4 py-3 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-2xl text-sm font-bold transition-all border-2 border-gray-100 hover:border-gray-200"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* ── 5-star incentive hint ── */}
+              {feedbackRating === 5 && (
+                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                  <span className="text-amber-500 text-sm">🏆</span>
+                  <p className="text-[11px] text-amber-700 font-semibold">
+                    5-star rating grants <strong>+10 PVP Points</strong> to {isClient ? order.ContributorName : order.ClientName}!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Manual Report User Modal ── */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={() => { setShowReportModal(false); setReportReason(''); }}>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full animate-slide-up border border-gray-100" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-extrabold text-gray-900 mb-1 flex items-center gap-2">
+              <Flag size={18} className="text-red-500" /> Report User
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Report <strong className="text-gray-700">{isClient ? order.ContributorName : order.ClientName}</strong> for a dispute or violation on Order #{order.OrderID}.
+            </p>
+            <div className="mb-4">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Reason for Report</label>
+              <textarea
+                value={reportReason}
+                onChange={e => setReportReason(e.target.value)}
+                placeholder="Describe the issue in detail..."
+                rows={4}
+                className="input-field !text-xs !py-2.5 resize-none mt-1"
+              />
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-5">
+              <p className="text-[11px] font-semibold text-red-800 flex items-center gap-1 mb-1">
+                <AlertTriangle size={11} /> Important
+              </p>
+              <p className="text-[11px] text-red-700">
+                False reports may result in account penalties. Only report genuine issues.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleReportSubmit}
+                disabled={!reportReason.trim() || actionLoading === 'report'}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-red-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading === 'report' ? <Loader2 size={15} className="animate-spin" /> : <Flag size={15} />}
+                Submit Report
+              </button>
+              <button
+                onClick={() => { setShowReportModal(false); setReportReason(''); }}
+                className="px-4 py-3 text-gray-500 hover:bg-gray-100 rounded-2xl text-sm font-bold transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

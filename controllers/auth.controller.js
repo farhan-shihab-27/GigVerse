@@ -19,33 +19,33 @@ const JWT_EXPIRES = '7d';
 // ── In-memory OTP Store (swap for Redis in production at scale) ──────────────
 const otpStore = new Map();
 
-// ── Nodemailer Transporter ──────────────────────────────────────────────────
-function createTransporter() {
-  // If Gmail SMTP credentials are configured, use them; otherwise fall back
-  // to a console-only mode so the server still boots in dev without .env creds.
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,               // SSL on port 465
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS, // 16-char Gmail App Password
-      },
-      pool: true,                   // Reuse connections for throughput
-      maxConnections: 3,
-      maxMessages: 50,
-      connectionTimeout: 30_000,    // 30 s to establish TCP connection
-      greetingTimeout:   30_000,    // 30 s for SMTP greeting
-      socketTimeout:     60_000,    // 60 s for socket inactivity
-      family: 4,                    // Force IPv4 (avoids IPv6 issues on some hosts)
-      tls: { rejectUnauthorized: false },
-    });
-  }
+// ── Nodemailer Transporter (Module-level Singleton) ─────────────────────────
+// Hoisted to module scope so the SMTP connection pool persists across requests.
+// On serverless platforms, this survives within the same warm invocation context.
+let transporter = null;
+if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',               // Uses Gmail's well-known SMTP config
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,   // 16-char Gmail App Password
+    },
+    pool: true,                      // Reuse connections for throughput
+    maxConnections: 3,
+    maxMessages: 50,
+    connectionTimeout: 30_000,       // 30 s to establish TCP connection
+    greetingTimeout:   30_000,       // 30 s for SMTP greeting
+    socketTimeout:     60_000,       // 60 s for socket inactivity
+    family: 4,                       // Force IPv4 (avoids IPv6 issues on some hosts)
+    tls: { rejectUnauthorized: false },
+  });
 
-  // Dev fallback — OTP is logged to console
+  // Verify SMTP credentials on boot — logs success/failure without blocking
+  transporter.verify()
+    .then(() => console.log('✅  SMTP transporter verified — email dispatch ready.'))
+    .catch((err) => console.error('🚨 SMTP transporter verification FAILED:', err.message));
+} else {
   console.warn('[Nodemailer] SMTP_USER / SMTP_PASS not set — emails will only be logged to console.');
-  return null;
 }
 
 // ── Branded HTML email template ─────────────────────────────────────────────
@@ -237,7 +237,7 @@ exports.requestOtp = async (req, res, next) => {
     });
 
     // ── Send email (BLOCKING — must confirm dispatch before responding) ────
-    const transporter = createTransporter();
+    // transporter is the module-level singleton (null if SMTP not configured)
     if (!transporter) {
       console.error('🚨 NODEMAILER SMTP ERROR: Transporter is null — SMTP_USER / SMTP_PASS not configured.');
       // Still log OTP for local dev debugging
