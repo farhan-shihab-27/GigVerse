@@ -49,18 +49,59 @@ exports.estimateGig = async (req, res, next) => {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    const result = await model.generateContent({
-      contents: [
-        { role: 'user', parts: [{ text: `${SYSTEM_PROMPT}\n\nUser request: "${prompt.trim()}"` }] },
-      ],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 300,
-        responseMimeType: 'application/json',
-      },
-    });
+    let responseText;
+    try {
+      const result = await model.generateContent({
+        contents: [
+          { role: 'user', parts: [{ text: `${SYSTEM_PROMPT}\n\nUser request: "${prompt.trim()}"` }] },
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 300,
+        },
+      });
 
-    const responseText = result.response.text().trim();
+      // Extract text — guard against missing response structure
+      const response = result?.response;
+      if (!response) {
+        console.error('[AI Controller] Gemini returned no response object.');
+        return res.status(502).json({
+          success: false,
+          message: 'AI returned an empty response. Please try again.',
+        });
+      }
+
+      responseText = (typeof response.text === 'function' ? response.text() : response.text || '').trim();
+
+      if (!responseText) {
+        console.error('[AI Controller] Gemini returned empty text.');
+        return res.status(502).json({
+          success: false,
+          message: 'AI returned an empty response. Please try again.',
+        });
+      }
+    } catch (apiErr) {
+      console.error('[AI Controller] Gemini API call failed:', apiErr.message || apiErr);
+
+      // ── Graceful Gemini-specific error handling ──
+      if (apiErr.message?.includes('API_KEY_INVALID') || apiErr.message?.includes('PERMISSION_DENIED')) {
+        return res.status(503).json({
+          success: false,
+          message: 'AI service authentication failed. Please check API key configuration.',
+        });
+      }
+      if (apiErr.message?.includes('RESOURCE_EXHAUSTED') || apiErr.message?.includes('429')) {
+        return res.status(429).json({
+          success: false,
+          message: 'AI service is temporarily busy. Please wait a moment and try again.',
+        });
+      }
+
+      return res.status(502).json({
+        success: false,
+        message: 'AI service encountered an error. Please try again shortly.',
+      });
+    }
 
     // ── Parse the JSON response ──
     let parsed;
@@ -70,10 +111,23 @@ exports.estimateGig = async (req, res, next) => {
       parsed = JSON.parse(cleaned);
     } catch (parseErr) {
       console.error('[AI Controller] Failed to parse Gemini response:', responseText);
-      return res.status(502).json({
-        success: false,
-        message: 'AI returned an invalid response. Please try again.',
-      });
+      // Attempt to extract JSON from within the text
+      try {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          return res.status(502).json({
+            success: false,
+            message: 'AI returned an invalid response format. Please try again.',
+          });
+        }
+      } catch (_) {
+        return res.status(502).json({
+          success: false,
+          message: 'AI returned an invalid response. Please try again.',
+        });
+      }
     }
 
     // ── Validate structure ──
@@ -86,24 +140,10 @@ exports.estimateGig = async (req, res, next) => {
     return res.json({ success: true, data });
 
   } catch (err) {
-    // ── Graceful Gemini-specific error handling ──
-    if (err.message?.includes('API_KEY_INVALID') || err.message?.includes('PERMISSION_DENIED')) {
-      console.error('[AI Controller] Invalid Gemini API Key:', err.message);
-      return res.status(503).json({
-        success: false,
-        message: 'AI service authentication failed. Please check API key configuration.',
-      });
-    }
-
-    if (err.message?.includes('RESOURCE_EXHAUSTED') || err.message?.includes('429')) {
-      console.error('[AI Controller] Gemini rate limit hit:', err.message);
-      return res.status(429).json({
-        success: false,
-        message: 'AI service is temporarily busy. Please wait a moment and try again.',
-      });
-    }
-
     console.error('[AI Controller] Unexpected error:', err);
-    next(err);
+    return res.status(500).json({
+      success: false,
+      message: 'An unexpected error occurred with the AI service. Please try again.',
+    });
   }
 };

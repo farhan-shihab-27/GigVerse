@@ -128,4 +128,22 @@ export const dashboardAPI = {
   getTelemetry: () => api.get('/dashboard/telemetry'),
 };
 
+// ── Reviews ───────────────────────────────────────────────────────────────────
+export const reviewAPI = {
+  create: (data) => api.post('/reviews', data),
+  getByOrder: (orderId) => api.get(`/reviews/order/${orderId}`),
+  getByContributor: (userId) => api.get(`/reviews/user/${userId}`),
+  // Mutual feedback: both client AND contributor can review each other
+  // Payload: { order_id, reviewer_id, reviewee_id, rating, comment }
+  submitMutualFeedback: (data) => api.post('/reviews/mutual', data),
+  // Returns whether the current user has already submitted feedback for this order
+  getMyReviewForOrder: (orderId, reviewerId) =>
+    api.get(`/reviews/order/${orderId}/reviewer/${reviewerId}`),
+};
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+export const reportAPI = {
+  submit: (data) => api.post('/reports', data),
+};
+
 export default api;

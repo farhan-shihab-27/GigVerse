@@ -1,6 +1,8 @@
 // src/components/NotificationBell.jsx — Glassmorphic Notification Dropdown
 // Glowing bell with unread count, slide-down panel, and toast integration.
+// Safe JSON-aware display + click-to-navigate routing.
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Check, CheckCheck, MessageSquare, ClipboardList, Star, AlertTriangle, Zap, X } from 'lucide-react';
 import { notificationAPI, messageAPI } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -15,6 +17,64 @@ const TYPE_CONFIG = {
   system:    { icon: Bell,          color: 'text-gray-500',   bg: 'bg-gray-50' },
 };
 
+// ── Safe display text parser ────────────────────────────────────────────────
+// If the string is valid JSON with a `text` property, return that text.
+// If it's a JSON proposal, build a human-readable summary.
+// Otherwise, return the raw string as-is (it's already plain text).
+function parseDisplayText(raw) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const trimmed = raw.trim();
+  // Quick guard: only attempt parse if it looks like JSON
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return raw;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (typeof parsed !== 'object' || parsed === null) return raw;
+    // System messages: { type: "system", text: "..." }
+    if (parsed.text) return parsed.text;
+    // Proposal messages: { type: "proposal", description, price, status, ... }
+    if (parsed.type === 'proposal') {
+      const status = parsed.status ? ` (${parsed.status})` : '';
+      const price = parsed.price != null ? ` — ৳${Number(parsed.price).toLocaleString()}` : '';
+      return `Custom Proposal${price}${status}${parsed.description ? ': ' + parsed.description : ''}`;
+    }
+    // Generic fallback: if there's a message or description field, use it
+    if (parsed.message) return parsed.message;
+    if (parsed.description) return parsed.description;
+    // Last resort: return stringified but indicate it's a notification
+    return raw;
+  } catch {
+    // Not valid JSON — just a normal string
+    return raw;
+  }
+}
+
+// ── Route resolver for notification click ───────────────────────────────────
+// Maps notification type → target route for navigation.
+function getNotificationRoute(notif) {
+  const type = (notif.Type || '').toLowerCase();
+  switch (type) {
+    case 'message':
+      return '/dashboard/messages';
+    case 'order':
+    case 'milestone':
+      return '/orders';
+    case 'review':
+      return '/profile';
+    case 'dispute':
+      return '/orders';
+    case 'system':
+    default:
+      // System notifications with message-related content also go to messages
+      if (notif.Title && /message|proposal|chat|inbox/i.test(notif.Title)) {
+        return '/dashboard/messages';
+      }
+      if (notif.Content && /proposal|message/i.test(parseDisplayText(notif.Content))) {
+        return '/dashboard/messages';
+      }
+      return null; // No specific route
+  }
+}
+
 export default function NotificationBell() {
   const [isOpen, setIsOpen]           = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -23,6 +83,7 @@ export default function NotificationBell() {
   const [bellAnimate, setBellAnimate] = useState(false);
   const panelRef = useRef(null);
   const prevCount = useRef(0);
+  const navigate = useNavigate();
 
   // ── Fetch unread count (polling every 10s) ─────────────────────────────────
   const fetchUnreadCount = useCallback(async () => {
@@ -93,7 +154,7 @@ export default function NotificationBell() {
             NotificationID: `msg-${c.PartnerId}-${i}`,
             Type: 'message',
             Title: `New Message from ${c.PartnerName}`,
-            Content: c.LastMessage?.slice(0, 80) || 'You have an unread message.',
+            Content: c.LastMessage || 'You have an unread message.',
             IsRead: 0,
             CreatedAt: c.LastMessageAt || new Date().toISOString(),
           }));
@@ -128,6 +189,15 @@ export default function NotificationBell() {
   // ── Mark single as read ───────────────────────────────────────────────────
   const handleMarkRead = async (id) => {
     try {
+      // Synthetic message notifications have string IDs like "msg-123-0"
+      if (typeof id === 'string' && id.startsWith('msg-')) {
+        // Just mark locally for synthetic notifications
+        setNotifications(prev => prev.map(n =>
+          n.NotificationID === id ? { ...n, IsRead: 1 } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        return;
+      }
       await notificationAPI.markRead(id);
       setNotifications(prev => prev.map(n =>
         n.NotificationID === id ? { ...n, IsRead: 1 } : n
@@ -135,6 +205,18 @@ export default function NotificationBell() {
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch {
       // Silently fail
+    }
+  };
+
+  // ── Handle notification click — mark read + navigate ──────────────────────
+  const handleNotificationClick = (notif) => {
+    const isUnread = !notif.IsRead;
+    if (isUnread) handleMarkRead(notif.NotificationID);
+
+    const route = getNotificationRoute(notif);
+    if (route) {
+      setIsOpen(false);
+      navigate(route);
     }
   };
 
@@ -240,11 +322,14 @@ export default function NotificationBell() {
                   const config = TYPE_CONFIG[notif.Type] || TYPE_CONFIG.system;
                   const Icon = config.icon;
                   const isUnread = !notif.IsRead;
+                  const displayContent = parseDisplayText(notif.Content);
+                  const displayTitle = parseDisplayText(notif.Title);
+                  const hasRoute = !!getNotificationRoute(notif);
 
                   return (
                     <div
                       key={notif.NotificationID}
-                      onClick={() => isUnread && handleMarkRead(notif.NotificationID)}
+                      onClick={() => handleNotificationClick(notif)}
                       className={`flex gap-3 px-5 py-3.5 border-b border-gray-50 transition-all duration-150 cursor-pointer group
                         ${isUnread
                           ? 'bg-brand-50/30 hover:bg-brand-50/60'
@@ -260,14 +345,21 @@ export default function NotificationBell() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <p className={`text-xs leading-relaxed ${isUnread ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
-                            {notif.Title}
+                            {displayTitle}
                           </p>
                           {isUnread && (
                             <span className="w-2 h-2 rounded-full bg-brand-500 shrink-0 mt-1 animate-pulse-soft" />
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{notif.Content}</p>
-                        <p className="text-[10px] text-gray-300 mt-1.5 font-medium">{timeAgo(notif.CreatedAt)}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{displayContent}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <p className="text-[10px] text-gray-300 font-medium">{timeAgo(notif.CreatedAt)}</p>
+                          {hasRoute && (
+                            <span className="text-[9px] text-brand-500 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                              View →
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Mark read indicator */}
@@ -291,3 +383,4 @@ export default function NotificationBell() {
     </div>
   );
 }
+

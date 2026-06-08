@@ -6,10 +6,211 @@ import {
   DollarSign, Clock, CheckCircle2, User, Zap, XCircle,
   Mic, MicOff, Camera, FolderOpen, Phone, Video, MoreVertical,
   Smile, Paperclip, StopCircle, Maximize2, Minimize2, Play, Square,
-  PhoneOff, Shield, Sparkles
+  PhoneOff, Shield, Sparkles, Star
 } from 'lucide-react';
-import { messageAPI } from '../lib/api';
+import { messageAPI, orderAPI, reviewAPI } from '../lib/api';
 import toast from 'react-hot-toast';
+
+// ── Inline Review Card — renders after order completion ──────────────────────
+/**
+ * Premium 5-star rating + feedback panel rendered between the chat messages area
+ * and the input bar. Only visible when:
+ *   - Current user is the CLIENT of the order
+ *   - Order status is Completed
+ *   - No review has been submitted yet for this order
+ */
+function InlineReviewCard({ order, reviewerId, onSubmitted }) {
+  const [hover, setHover]       = useState(0);
+  const [rating, setRating]     = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted]   = useState(false);
+
+  const handleSubmit = async () => {
+    if (rating < 1) {
+      toast.error('Please select a star rating before submitting.', { className: 'gv-toast' });
+      return;
+    }
+    if (feedback.trim().length < 10) {
+      toast.error('Please write at least 10 characters of feedback.', { className: 'gv-toast' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await reviewAPI.create({
+        orderId:    order.OrderID,
+        reviewerId: Number(reviewerId),
+        rating:     rating,
+        comment:    feedback.trim(),
+      });
+      toast.success(
+        rating === 5
+          ? '⭐ Review submitted! +10 PVP Points awarded to the contributor!'
+          : '✅ Review submitted successfully! Thank you for your feedback.',
+        { className: 'gv-toast', duration: 5000 }
+      );
+      setSubmitted(true);
+      setTimeout(() => onSubmitted(), 2500); // hide panel after thank-you message
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to submit review.';
+      // 409 = already reviewed — silently dismiss
+      if (err.response?.status === 409) {
+        toast.success('You have already reviewed this order.', { className: 'gv-toast' });
+        onSubmitted();
+        return;
+      }
+      toast.error(msg, { className: 'gv-toast' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const starLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent ⭐'];
+  const display    = hover || rating;
+
+  // ── Submitted thank-you state ──────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="px-4 py-4 bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 border-t-2 border-emerald-300">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md shrink-0">
+            <CheckCircle2 size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-extrabold text-emerald-800">Thank You for Your Review!</p>
+            <p className="text-xs text-emerald-600 mt-0.5">Your {rating}-star rating has been saved. This helps the GigVerse community.</p>
+          </div>
+          <div className="ml-auto flex gap-0.5">
+            {[1,2,3,4,5].map(s => (
+              <svg key={s} width="14" height="14" viewBox="0 0 24 24"
+                fill={s <= rating ? '#10b981' : 'none'} stroke={s <= rating ? '#10b981' : '#d1d5db'}
+                strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="shrink-0" style={{ background: 'linear-gradient(to bottom, #fffbeb, #fff7ed)' }}>
+      {/* Top accent bar */}
+      <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
+
+      <div className="px-4 pt-4 pb-3">
+        {/* Header row */}
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-amber-200 shrink-0">
+            <Star size={16} className="text-white fill-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold text-gray-900 leading-tight">Rate Your Experience</p>
+            <p className="text-[10px] text-gray-500 font-medium truncate">
+              Order #{order.OrderID}{order.GigTitle ? ` — ${order.GigTitle}` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 shrink-0">
+            <CheckCircle2 size={10} className="text-emerald-500" />
+            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide">Order Completed</span>
+          </div>
+        </div>
+
+        {/* 5-star interactive row */}
+        <div className="flex items-center justify-center gap-2 mb-1">
+          {[1,2,3,4,5].map(s => (
+            <button
+              key={s}
+              type="button"
+              onMouseEnter={() => setHover(s)}
+              onMouseLeave={() => setHover(0)}
+              onClick={() => setRating(s)}
+              disabled={submitting}
+              className="transition-all duration-100 hover:scale-125 active:scale-95 focus:outline-none disabled:cursor-not-allowed"
+              title={starLabels[s]}
+            >
+              <svg
+                width="36" height="36" viewBox="0 0 24 24"
+                fill={s <= display ? '#f59e0b' : 'none'}
+                stroke={s <= display ? '#f59e0b' : '#d1d5db'}
+                strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{
+                  filter: s <= display ? 'drop-shadow(0 2px 6px rgba(245,158,11,0.55))' : 'none',
+                  transition: 'all 0.15s cubic-bezier(0.34,1.56,0.64,1)',
+                  transform: s <= display ? 'scale(1.05)' : 'scale(1)',
+                }}
+              >
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
+          ))}
+        </div>
+
+        {/* Star label */}
+        <p className={`text-center text-xs font-bold mb-3 h-4 transition-all duration-200 ${
+          display > 0 ? 'text-amber-600' : 'text-gray-300'
+        }`}>
+          {display > 0 ? starLabels[display] : 'Tap a star to rate'}
+        </p>
+
+        {/* Feedback textarea */}
+        <div className="relative mb-3">
+          <textarea
+            rows={2}
+            value={feedback}
+            maxLength={200}
+            onChange={e => setFeedback(e.target.value)}
+            placeholder="Share your experience with this contributor… (min. 10 characters)"
+            disabled={submitting}
+            className="w-full rounded-xl border border-amber-200 bg-white/80 px-3 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 focus:outline-none resize-none transition-all duration-200 hover:border-amber-300 leading-relaxed"
+          />
+          <span className={`absolute bottom-2 right-3 text-[9px] font-bold transition-colors ${
+            feedback.length >= 10 ? 'text-emerald-500' : 'text-gray-300'
+          }`}>
+            {feedback.length}/200
+          </span>
+        </div>
+
+        {/* Submit button */}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting || rating === 0}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-extrabold text-white transition-all duration-300 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-amber-300/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+          style={{
+            background: rating > 0
+              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+              : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+            color: rating > 0 ? 'white' : '#9ca3af',
+            opacity: submitting ? 0.7 : 1,
+          }}
+        >
+          {submitting ? (
+            <><Loader2 size={13} className="animate-spin" /> Submitting your review…</>
+          ) : (
+            <><Star size={13} className={rating > 0 ? 'fill-white' : ''} /> Submit Review & Rating</>
+          )}
+        </button>
+
+        {/* 5-star bonus hint */}
+        {rating === 5 && (
+          <p className="text-center text-[10px] text-amber-600 font-bold mt-2 animate-pulse">
+            ⭐ A 5-star review awards +10 PVP Points to your contributor!
+          </p>
+        )}
+
+        {/* Minimum validation hint */}
+        {rating > 0 && feedback.length > 0 && feedback.length < 10 && (
+          <p className="text-center text-[10px] text-red-400 font-semibold mt-1.5">
+            Please write at least {10 - feedback.length} more character{10 - feedback.length !== 1 ? 's' : ''}.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 // ── Parse message content — returns { type, text, ...proposal } ──────────────
 function parseContent(content) {
@@ -123,6 +324,9 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
   const [isFullScreen, setIsFullScreen]   = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [callType, setCallType]           = useState('audio');
+  // ── Review Card state — detects completed orders with pending review ──────
+  const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
+  const [reviewSubmitted, setReviewSubmitted]       = useState(false);
   const recordTimerRef  = useRef(null);
   const mediaRecRef     = useRef(null);
   const audioChunksRef  = useRef([]);
@@ -131,6 +335,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
 
   const chatEndRef = useRef(null);
   const pollRef    = useRef(null);
+
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('gv_user')) || {}; } catch { return {}; } })();
 
@@ -201,6 +406,42 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // ── Detect pending review when active partner changes ──────────────────────
+  // Queries my orders to find a Completed order with this partner where I am
+  // the Client and no review has been submitted yet.
+  useEffect(() => {
+    setPendingReviewOrder(null);
+    setReviewSubmitted(false);
+    if (!activePartner?.PartnerId || !currentUser?.UserID) return;
+
+    (async () => {
+      try {
+        const ordersRes = await orderAPI.getMyOrders();
+        const orders = ordersRes.data?.data || [];
+        const completedOrder = orders.find(o =>
+          o.Status === 'Completed' &&
+          Number(o.ClientID) === Number(currentUser.UserID) &&
+          Number(o.ContributorID) === Number(activePartner.PartnerId)
+        );
+        if (!completedOrder) return;
+
+        // Check if review already exists for this order
+        try {
+          await reviewAPI.getByOrder(completedOrder.OrderID);
+          // 200 OK means review exists — do not show card
+        } catch (reviewErr) {
+          if (reviewErr.response?.status === 404) {
+            // No review yet — surface the inline card
+            setPendingReviewOrder(completedOrder);
+          }
+        }
+      } catch { /* silent — chat should not break if orders API fails */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePartner?.PartnerId]);
+
+
 
   // ── Select a conversation ──────────────────────────────────────────────────
   const selectPartner = (conv) => {
@@ -549,7 +790,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                 ) : messages.map(msg => {
                   const parsed = parseContent(msg.Content);
                   const isMine = msg.SenderID === currentUser.UserID;
-                  const time   = new Date(msg.Timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                  const time   = new Date(msg.Timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dhaka' });
 
                   if (parsed.type === 'system') return <SystemMessage key={msg.MessageID} data={parsed} />;
 
@@ -676,8 +917,21 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                     </div>
                   );
                 })}
+
                 <div ref={chatEndRef} />
               </div>
+
+              {/* ── REVIEW PANEL — Shown between messages and input when order is Completed ── */}
+              {/* This is the primary, always-visible review submission UI for clients */}
+              {pendingReviewOrder && !reviewSubmitted && (
+                <div className="mx-0 shrink-0 border-t-2 border-amber-200 animate-slide-up">
+                  <InlineReviewCard
+                    order={pendingReviewOrder}
+                    reviewerId={currentUser.UserID}
+                    onSubmitted={() => setReviewSubmitted(true)}
+                  />
+                </div>
+              )}
 
               {/* Proposal Form (Inline Expansion) */}
               {showProposalForm && (
