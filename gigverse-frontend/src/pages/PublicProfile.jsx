@@ -13,7 +13,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, User, RefreshCw } from 'lucide-react';
+import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, User, RefreshCw, Tag } from 'lucide-react';
 import api from '../lib/api';
 
 export default function PublicProfile() {
@@ -51,6 +51,7 @@ export default function PublicProfile() {
         Gigs:        Array.isArray(profileData.Gigs)        ? profileData.Gigs        : [],
         Experiences: Array.isArray(profileData.Experiences) ? profileData.Experiences : [],
         Reviews:     Array.isArray(profileData.Reviews)     ? profileData.Reviews     : [],
+        skills:      Array.isArray(profileData.skills)      ? profileData.skills      : [],
       });
     } catch (err) {
       // AbortController cancellation — not an actual error, ignore silently
@@ -145,6 +146,7 @@ export default function PublicProfile() {
   const userGigs       = user?.Gigs || [];
   const userExperiences = user?.Experiences || [];
   const userReviews    = user?.Reviews || [];
+  const userSkills     = user?.skills  || [];
 
   // ── Premium role + department formatter ──────────────────────────────────
   const formatRoleLabel = (roleName, deptName) => {
@@ -189,6 +191,36 @@ export default function PublicProfile() {
             </div>
           </div>
         </div>
+
+        {/* PROFESSIONAL SKILLS */}
+        {userSkills.length > 0 && (
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
+                  <Tag size={11} className="text-white" />
+                </div>
+                Professional Skills
+              </h2>
+              <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                {userSkills.length} verified
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {userSkills.map(s => (
+                <span
+                  key={s.SkillID}
+                  className="bg-slate-50 text-slate-700 border border-slate-200
+                    px-3 py-1 rounded-full text-sm font-medium
+                    hover:bg-white hover:border-slate-300 hover:shadow-sm
+                    transition-all duration-150 cursor-default"
+                >
+                  {s.SkillName}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT: GIGS */}

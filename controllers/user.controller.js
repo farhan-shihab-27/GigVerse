@@ -407,7 +407,23 @@ exports.getPublicProfile = async (req, res, next) => {
       user.Gigs = [];
     }
 
-    // ── 3. Experiences ──────────────────────────────────────────────────────
+    // ── 3. Skills ────────────────────────────────────────────────────────────
+    try {
+      const [skills] = await pool.query(
+        `SELECT s.SkillID, s.SkillName, c.CategoryName
+         FROM User_Skills us
+         JOIN Skills     s ON us.SkillID   = s.SkillID
+         JOIN Categories c ON s.CategoryID = c.CategoryID
+         WHERE us.UserID = ?`,
+        [id]
+      );
+      user.skills = skills || [];
+    } catch (skillErr) {
+      console.error('getPublicProfile — Skills sub-query failed:', skillErr.message);
+      user.skills = [];
+    }
+
+    // ── 4. Experiences ──────────────────────────────────────────────────────
     try {
       const [experiences] = await pool.query(
         `SELECT Title, Company, StartDate, EndDate, Description
@@ -422,7 +438,7 @@ exports.getPublicProfile = async (req, res, next) => {
       user.Experiences = [];
     }
 
-    // ── 4. Reviews received (where user is the contributor) ─────────────────
+    // ── 5. Reviews received (where user is the contributor) ─────────────────
     // Uses LEFT JOIN on the reviewer so deleted/anonymized accounts don't
     // break the entire query with a missing FK reference.
     try {
