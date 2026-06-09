@@ -1,4 +1,4 @@
-// ── Premium Simulated Escrow Payment Controller ─────────────────────────────
+// Premium Simulated Escrow Payment Controller
 // Processes escrow payments via Mobile Money (bKash, Nagad, Rocket) or Bank Transfer.
 // Includes enterprise-grade error logging for Vercel ↔ Aiven MySQL debugging.
 // + Smart Dispute & Compensation Logic (Release, Cancel, Dispute)
@@ -38,7 +38,7 @@ function logConnectionDiagnostics(err, correlationId) {
   console.error(`[PAYMENT ERROR] SQL State      : ${err.sqlState || 'N/A'}`);
   console.error(`[PAYMENT ERROR] SQL Message    : ${err.sqlMessage || 'N/A'}`);
 
-  // ── Specific connection failure diagnostics ──
+  // Specific connection failure diagnostics
   if (code === 'ECONNREFUSED') {
     console.error('[PAYMENT DIAG] ⛔ Connection REFUSED. Possible causes:');
     console.error('  1. Aiven MySQL IP whitelist is blocking this server\'s IP.');
@@ -98,7 +98,7 @@ exports.processEscrowPayment = async (req, res, next) => {
 
     const userId = req.user.userId;
 
-    // ── Input Validation ────────────────────────────────────────────────────
+    // Input Validation
     if (!orderId || !paymentMethod || !senderAccountNo || !transactionId) {
       return res.status(400).json({
         success: false,
@@ -133,7 +133,7 @@ exports.processEscrowPayment = async (req, res, next) => {
       }
     }
 
-    // ── Verify Order Exists & Belongs to User ───────────────────────────────
+    // Verify Order Exists & Belongs to User
     const [orders] = await pool.query(
       'SELECT OrderID, ClientID, ContributorID, Amount, OrderStatus, PaymentStatus FROM Orders WHERE OrderID = ?',
       [orderId]
@@ -165,7 +165,7 @@ exports.processEscrowPayment = async (req, res, next) => {
       });
     }
 
-    // ── Update Order with Payment Details ───────────────────────────────────
+    // Update Order with Payment Details
     await pool.query(
       `UPDATE Orders
        SET payment_method    = ?,
@@ -183,7 +183,7 @@ exports.processEscrowPayment = async (req, res, next) => {
       ]
     );
 
-    // ── Insert into Payments Table ──────────────────────────────────────────
+    // Insert into Payments Table
     await pool.query(
       `INSERT INTO Payments (OrderID, TransactionID, Amount, PaymentMethod, Status)
        VALUES (?, ?, ?, ?, 'Pending')`,
@@ -195,7 +195,7 @@ exports.processEscrowPayment = async (req, res, next) => {
       ]
     );
 
-    // ── Notify Contributor ──────────────────────────────────────────────────
+    // Notify Contributor
     await createNotification(
       order.ContributorID,
       'order',
@@ -220,7 +220,7 @@ exports.processEscrowPayment = async (req, res, next) => {
     });
 
   } catch (err) {
-    // ── Enterprise-grade connection error diagnostics ────────────────────────
+    // Enterprise-grade connection error diagnostics 
     logConnectionDiagnostics(err, correlationId);
 
     // Duplicate transaction_id — user-friendly message
@@ -249,9 +249,9 @@ exports.processEscrowPayment = async (req, res, next) => {
   }
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ── ESCROW RELEASE — Client confirms delivery, full payout ──────────────────
-// ═════════════════════════════════════════════════════════════════════════════
+
+// ESCROW RELEASE — Client confirms delivery, full payout 
+
 
 exports.releaseEscrow = async (req, res, next) => {
   const conn = await pool.getConnection();
@@ -344,11 +344,9 @@ exports.releaseEscrow = async (req, res, next) => {
   }
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ── CANCEL WITH COMPENSATION — Smart Dispute Math ───────────────────────────
+// CANCEL WITH COMPENSATION — Smart Dispute Math 
 // For every revision attempt, 10% weight is added.
 // If canceled after 2 revisions → 20% to Contributor, 80% refund to Client.
-// ═════════════════════════════════════════════════════════════════════════════
 
 exports.cancelWithCompensation = async (req, res, next) => {
   const conn = await pool.getConnection();
@@ -385,7 +383,7 @@ exports.cancelWithCompensation = async (req, res, next) => {
 
     await conn.beginTransaction();
 
-    // ── THE MATH ────────────────────────────────────────────────────────────
+    // THE MATH 
     // compensationPercent = RevisionCount × 10, capped at 50%
     const revisionCount = order.RevisionCount || 0;
     const compensationPercent = Math.min(revisionCount * 10, 50);
@@ -467,9 +465,7 @@ exports.cancelWithCompensation = async (req, res, next) => {
   }
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ── DISPUTE ORDER — Either party raises a formal dispute ────────────────────
-// ═════════════════════════════════════════════════════════════════════════════
+// DISPUTE ORDER — Either party raises a formal dispute
 
 exports.disputeOrder = async (req, res, next) => {
   const correlationId = `DIS-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;

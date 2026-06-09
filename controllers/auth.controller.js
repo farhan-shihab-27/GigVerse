@@ -1,10 +1,9 @@
 // auth.controller.js — GigVerse Authentication (OTP, Signup, Login)
-// ─────────────────────────────────────────────────────────────────
+
 // Schema mapping (NEVER MODIFIED):
 //   Users: UserID, RoleID, DeptID, Name, UiuId, UiuEmail, PersonalEmail,
 //          PasswordHash, DOB, ProfilePicUrl, Bio, PVP_Points, AverageRating
 //   User_Private_Info: UserID, WhatsAppNumber, BkashNumber, BankAccountDetails
-// ─────────────────────────────────────────────────────────────────
 
 const bcrypt      = require('bcrypt');
 const jwt         = require('jsonwebtoken');
@@ -16,10 +15,10 @@ const SALT_ROUNDS = 12;
 const JWT_SECRET  = process.env.JWT_SECRET  || 'change_me_to_a_long_random_string';
 const JWT_EXPIRES = '7d';
 
-// ── In-memory OTP Store (swap for Redis in production at scale) ──────────────
+// In-memory OTP Store (swap for Redis in production at scale) 
 const otpStore = new Map();
 
-// ── Nodemailer Transporter (Module-level Singleton) ─────────────────────────
+// Nodemailer Transporter (Module-level Singleton)
 // Hoisted to module scope so the SMTP connection pool persists across requests.
 // On serverless platforms, this survives within the same warm invocation context.
 let transporter = null;
@@ -48,7 +47,7 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
   console.warn('[Nodemailer] SMTP_USER / SMTP_PASS not set — emails will only be logged to console.');
 }
 
-// ── Branded HTML email template ─────────────────────────────────────────────
+// Branded HTML email template
 function buildOtpEmail(name, otp) {
   return {
     subject: `${otp} — Your GigVerse Verification Code`,
@@ -138,7 +137,7 @@ function buildOtpEmail(name, otp) {
   };
 }
 
-// ── POST /api/auth/request-otp ───────────────────────────────────────────────
+// POST /api/auth/request-otp
 exports.requestOtp = async (req, res, next) => {
   console.log('\n🔬 INCOMING OTP-REQUEST PAYLOAD:', JSON.stringify(req.body, null, 2));
   try {
@@ -150,12 +149,12 @@ exports.requestOtp = async (req, res, next) => {
     // Accept legacy field aliases
     const resolvedEmail = (email || req.body.uiuEmail || req.body.personalEmail || '').toLowerCase().trim();
 
-    // ── Required field guard ─────────────────────────────────────
+    // Required field guard 
     if (!name || !resolvedEmail || !whatsAppNumber || !password || !roleId) {
       return res.status(400).json({ success: false, message: 'Missing required fields.' });
     }
 
-    // ── UIU email enforcement (Students = 1, Faculty = 3) ────────
+    // UIU email enforcement (Students = 1, Faculty = 3) 
     if (roleId === 1 || roleId === 3) {
       if (!resolvedEmail.endsWith('.uiu.ac.bd')) {
         return res.status(403).json({
@@ -165,7 +164,7 @@ exports.requestOtp = async (req, res, next) => {
       }
     }
 
-    // ── Duplicate check ──────────────────────────────────────────
+    // Duplicate check 
     let existing;
     try {
       console.log('[DEBUG] Running duplicate check for:', resolvedEmail, uiuId);
@@ -190,7 +189,7 @@ exports.requestOtp = async (req, res, next) => {
       });
     }
 
-    // ── UIU Student ID format validator (Students & Alumni) ──────
+    // UIU Student ID format validator (Students & Alumni)
     const isStudentOrAlumni = roleId === 1 || roleId === 2;
     if (isStudentOrAlumni && uiuId) {
       if (uiuId.length !== 10 || isNaN(uiuId)) {
@@ -214,7 +213,7 @@ exports.requestOtp = async (req, res, next) => {
       }
     }
 
-    // ── Resolve UiuEmail & PersonalEmail columns ─────────────────
+    // Resolve UiuEmail & PersonalEmail columns
     let uiuEmail, personalEmail;
     if (roleId === 1 || roleId === 3) {
       // Student / Faculty: their .uiu.ac.bd IS the UIU email
@@ -226,7 +225,7 @@ exports.requestOtp = async (req, res, next) => {
       uiuEmail      = `alumni_${Date.now()}@placeholder.gigverse`;
     }
 
-    // ── Generate 6-digit OTP ─────────────────────────────────────
+    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store OTP + payload (expires 10 min)
@@ -236,7 +235,7 @@ exports.requestOtp = async (req, res, next) => {
       userData: { name, uiuId, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob },
     });
 
-    // ── Send email (BLOCKING — must confirm dispatch before responding) ────
+    // Send email (BLOCKING — must confirm dispatch before responding) 
     // transporter is the module-level singleton (null if SMTP not configured)
     if (!transporter) {
       console.error('🚨 NODEMAILER SMTP ERROR: Transporter is null — SMTP_USER / SMTP_PASS not configured.');
@@ -278,7 +277,7 @@ exports.requestOtp = async (req, res, next) => {
   }
 };
 
-// ── POST /api/auth/verify-otp ────────────────────────────────────────────────
+// POST /api/auth/verify-otp
 exports.verifyOtp = async (req, res, next) => {
   console.log('\n🔬 INCOMING VERIFY-OTP PAYLOAD:', JSON.stringify(req.body, null, 2));
   try {
@@ -296,7 +295,7 @@ exports.verifyOtp = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid verification code.' });
     }
 
-    // ── OTP verified — create user ───────────────────────────────
+    // OTP verified — create user
     const { name, uiuId, uiuEmail, personalEmail, whatsAppNumber, password, roleId, deptId, dob } = record.userData;
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -304,7 +303,7 @@ exports.verifyOtp = async (req, res, next) => {
     // Clamp deptId to valid DB range (1–18)
     const safeDeptId = (Number(deptId) >= 1 && Number(deptId) <= 18) ? Number(deptId) : 1;
 
-    // ── Gemini AI: Generate personalized welcome bio (graceful degradation) ──
+    // Gemini AI: Generate personalized welcome bio (graceful degradation)
     let generatedBio = 'Welcome to GigVerse!';
     try {
       if (process.env.GEMINI_API_KEY) {
@@ -327,7 +326,7 @@ exports.verifyOtp = async (req, res, next) => {
       // generatedBio stays as default — registration continues unaffected
     }
 
-    // ── CRITICAL DB INSERTION — wrapped for deep error tracking ──
+    // CRITICAL DB INSERTION — wrapped for deep error tracking 
     let result;
     try {
       [result] = await pool.query(
@@ -382,12 +381,12 @@ exports.verifyOtp = async (req, res, next) => {
   }
 };
 
-// ── POST /api/auth/register (deprecated) ────────────────────────────────────
+// POST /api/auth/register (deprecated)
 exports.register = async (_req, res) => {
   return res.status(410).json({ success: false, message: 'Deprecated. Use /request-otp and /verify-otp.' });
 };
 
-// ── POST /api/auth/login ─────────────────────────────────────────────────────
+// POST /api/auth/login 
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;

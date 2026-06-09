@@ -1,11 +1,10 @@
--- ============================================================
+
 -- GigVerse — Smart Order Tracking & Notification Migration
 -- Safe to run multiple times. Uses IF NOT EXISTS and
 -- stored-procedure-based column existence checks.
 -- DOES NOT touch, rename, or drop any existing tables.
--- ============================================================
 
--- ─── 1. Enhance Notifications table (add Type & RelatedID) ──
+-- 1. Enhance Notifications table (add Type & RelatedID) 
 
 DROP PROCEDURE IF EXISTS _gv_add_notification_cols;
 DELIMITER //
@@ -39,7 +38,7 @@ CALL _gv_add_notification_cols();
 DROP PROCEDURE IF EXISTS _gv_add_notification_cols;
 
 
--- ─── 2. OrderMilestones table (4-step progress tracker) ─────
+-- 2. OrderMilestones table (4-step progress tracker)
 
 CREATE TABLE IF NOT EXISTS OrderMilestones (
   MilestoneID   INT            AUTO_INCREMENT PRIMARY KEY,
@@ -56,7 +55,7 @@ CREATE TABLE IF NOT EXISTS OrderMilestones (
 CREATE INDEX IF NOT EXISTS idx_milestones_order ON OrderMilestones (OrderID);
 
 
--- ─── 3. OrderRevisions table (revision history for disputes) ─
+-- 3. OrderRevisions table (revision history for disputes)
 
 CREATE TABLE IF NOT EXISTS OrderRevisions (
   RevisionID    INT            AUTO_INCREMENT PRIMARY KEY,
@@ -75,7 +74,7 @@ CREATE TABLE IF NOT EXISTS OrderRevisions (
 CREATE INDEX IF NOT EXISTS idx_revisions_order ON OrderRevisions (OrderID);
 
 
--- ─── 4. Add tracking columns to Orders table ────────────────
+-- 4. Add tracking columns to Orders table
 
 DROP PROCEDURE IF EXISTS _gv_add_order_tracking_cols;
 DELIMITER //
@@ -126,6 +125,4 @@ DELIMITER ;
 CALL _gv_add_order_tracking_cols();
 DROP PROCEDURE IF EXISTS _gv_add_order_tracking_cols;
 
-
--- ─── Done ────────────────────────────────────────────────────
 -- Migration complete. All changes are safe and idempotent.

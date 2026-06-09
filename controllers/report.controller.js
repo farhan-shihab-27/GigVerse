@@ -1,8 +1,8 @@
-// ── GigVerse — Report Controller ─────────────────────────────────────────────
+// GigVerse — Report Controller
 // Handles manual user-submitted reports for admin review.
 const pool = require('../database/db');
 
-// ── Submit Report ───────────────────────────────────────────────────────────
+// Submit Report
 exports.submitReport = async (req, res, next) => {
   try {
     const { orderId, reportedUserId, reason } = req.body;

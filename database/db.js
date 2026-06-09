@@ -43,7 +43,7 @@ const pool = mysql.createPool({
     console.log('✅  MySQL pool connected to Aiven (SSL verified)');
     conn.release();
 
-    // ── Safe DB Migration: Ensure Notifications.Type column exists ───────────
+    // Safe DB Migration: Ensure Notifications.Type column exists 
     try {
       await pool.query(
         `ALTER TABLE Notifications ADD COLUMN Type VARCHAR(50) DEFAULT 'general'`
@@ -57,7 +57,7 @@ const pool = mysql.createPool({
       }
     }
 
-    // ── Safe DB Migration: Ensure Gigs.Status column exists (for Soft Delete) ─
+    // Safe DB Migration: Ensure Gigs.Status column exists (for Soft Delete)
     try {
       await pool.query(
         `ALTER TABLE Gigs ADD COLUMN Status VARCHAR(20) NOT NULL DEFAULT 'active'`
@@ -71,7 +71,7 @@ const pool = mysql.createPool({
       }
     }
 
-    // ── PVP Override (Silent Startup Script) ──────────────────────────────────
+    // PVP Override (Silent Startup Script) 
     try {
       await pool.query(
         `UPDATE Users SET PVP_Points = 5000 WHERE UiuId = '0112420005' OR UiuEmail = 'mshihab2420005@bscse.uiu.ac.bd'`

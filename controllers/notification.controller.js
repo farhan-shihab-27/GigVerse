@@ -1,8 +1,8 @@
-// ── GigVerse — Universal Notification Controller ────────────────────────────
+// GigVerse — Universal Notification Controller
 // Handles CRUD for notifications + a shared helper for cross-controller use.
 const pool = require('../database/db');
 
-// ─── Shared Helper: Create a notification from ANY controller ────────────────
+// Shared Helper: Create a notification from ANY controller
 /**
  * Inserts a notification row. Called by order, payment, review controllers.
  * @param {number}      userId    - Recipient user ID
@@ -24,7 +24,7 @@ async function createNotification(userId, type, title, content, relatedId = null
   }
 }
 
-// ─── GET /api/notifications — Fetch user's notifications (paginated) ─────────
+// GET /api/notifications — Fetch user's notifications (paginated)
 const getNotifications = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -55,7 +55,7 @@ const getNotifications = async (req, res, next) => {
   }
 };
 
-// ─── GET /api/notifications/unread-count ─────────────────────────────────────
+// GET /api/notifications/unread-count 
 const getUnreadCount = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -69,7 +69,7 @@ const getUnreadCount = async (req, res, next) => {
   }
 };
 
-// ─── PATCH /api/notifications/:id/read — Mark single notification as read ────
+// PATCH /api/notifications/:id/read — Mark single notification as read 
 const markAsRead = async (req, res, next) => {
   try {
     const userId         = req.user.userId;
@@ -90,7 +90,7 @@ const markAsRead = async (req, res, next) => {
   }
 };
 
-// ─── PATCH /api/notifications/read-all — Mark all as read ────────────────────
+// PATCH /api/notifications/read-all — Mark all as read 
 const markAllAsRead = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -104,7 +104,7 @@ const markAllAsRead = async (req, res, next) => {
   }
 };
 
-// ─── Exports ─────────────────────────────────────────────────────────────────
+// Exports 
 module.exports = {
   createNotification,
   getNotifications,

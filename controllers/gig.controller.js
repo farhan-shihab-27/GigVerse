@@ -1,8 +1,8 @@
-// ── GigVerse — Gig Controller (Full CRUD + Soft Delete) ─────────────────────
+// GigVerse — Gig Controller (Full CRUD + Soft Delete)
 // Secure: createGig uses JWT userId, not body. Edit/Delete scoped to owner only.
 const pool = require('../database/db');
 
-// ── Create Gig (Authenticated — uses req.user.userId) ───────────────────────
+// Create Gig (Authenticated — uses req.user.userId)
 exports.createGig = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -45,7 +45,7 @@ exports.createGig = async (req, res, next) => {
   }
 };
 
-// ── Update Gig (Owner Only) ─────────────────────────────────────────────────
+// Update Gig (Owner Only)
 exports.updateGig = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -101,7 +101,7 @@ exports.updateGig = async (req, res, next) => {
   }
 };
 
-// ── Delete Gig (Owner Only — SOFT DELETE) ───────────────────────────────────
+// Delete Gig (Owner Only — SOFT DELETE)
 // Instead of hard DELETE, sets Status = 'deleted' to preserve FK integrity.
 exports.deleteGig = async (req, res, next) => {
   try {
@@ -126,7 +126,7 @@ exports.deleteGig = async (req, res, next) => {
   }
 };
 
-// ── Get My Gigs (Authenticated — excludes soft-deleted) ─────────────────────
+// Get My Gigs (Authenticated — excludes soft-deleted)
 exports.getMyGigs = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -148,7 +148,7 @@ exports.getMyGigs = async (req, res, next) => {
   }
 };
 
-// ── Get Single Gig (excludes soft-deleted) ──────────────────────────────────
+// Get Single Gig (excludes soft-deleted)
 exports.getGig = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -165,7 +165,7 @@ exports.getGig = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Get Gigs by Contributor (Public — excludes soft-deleted) ────────────────
+// Get Gigs by Contributor (Public — excludes soft-deleted)
 exports.getGigsByContributor = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -176,7 +176,7 @@ exports.getGigsByContributor = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Get All Gigs (Public Feed — excludes soft-deleted) ──────────────────────
+// Get All Gigs (Public Feed — excludes soft-deleted)
 exports.getAllGigs = async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 50);

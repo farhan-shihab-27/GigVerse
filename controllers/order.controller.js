@@ -1,10 +1,10 @@
-// ── GigVerse — Order / Escrow Controller (Enhanced) ─────────────────────────
+// GigVerse — Order / Escrow Controller (Enhanced)
 // Two-way order flow: Direct purchase + Custom offers
 // 4-step milestone tracking with notification integration
 const pool = require('../database/db');
 const { createNotification } = require('./notification.controller');
 
-// ── Default milestone labels ────────────────────────────────────────────────
+//  Default milestone labels 
 const DEFAULT_MILESTONES = [
   { step: 1, label: 'Design & Planning' },
   { step: 2, label: 'Draft & Development' },
@@ -12,7 +12,7 @@ const DEFAULT_MILESTONES = [
   { step: 4, label: 'Final Delivery' },
 ];
 
-// ── Create Order (Direct Gig Purchase) ──────────────────────────────────────
+// Create Order (Direct Gig Purchase) 
 // Order starts as "Pending_Acceptance" — contributor must accept it.
 exports.createOrder = async (req, res, next) => {
   try {
@@ -69,7 +69,7 @@ exports.createOrder = async (req, res, next) => {
   }
 };
 
-// ── Accept Order (Contributor Only) ─────────────────────────────────────────
+// Accept Order (Contributor Only)
 // Sets status to In_Progress, generates 4 milestones, starts countdown.
 exports.acceptOrder = async (req, res, next) => {
   const conn = await pool.getConnection();
@@ -156,7 +156,7 @@ exports.acceptOrder = async (req, res, next) => {
   }
 };
 
-// ── Submit Milestone (Contributor marks a step as done) ─────────────────────
+// Submit Milestone (Contributor marks a step as done)
 exports.updateMilestone = async (req, res, next) => {
   try {
     const orderId = req.params.id;
@@ -207,7 +207,7 @@ exports.updateMilestone = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Approve Milestone & Release Escrow (Client) ─────────────────────────────
+// Approve Milestone & Release Escrow (Client)
 exports.approveMilestone = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -278,7 +278,7 @@ exports.approveMilestone = async (req, res, next) => {
       [orderId]
     );
     if (allMs[0].released >= 4) {
-      // ── Mandatory Rating & Feedback Gate ──────────────────────────────
+      // Mandatory Rating & Feedback Gate
       if (!rating || !feedback || String(feedback).trim().length < 10) {
         await conn.rollback();
         conn.release();
@@ -298,7 +298,7 @@ exports.approveMilestone = async (req, res, next) => {
       await conn.query("UPDATE Orders SET OrderStatus = 'Completed', PaymentStatus = 'Released' WHERE OrderID = ?", [orderId]);
       await conn.query("UPDATE Payments SET Status = 'Completed' WHERE OrderID = ?", [orderId]);
 
-      // ── Save Review ────────────────────────────────────────────────────
+      // Save Review
       await conn.query(
         'INSERT INTO Reviews (OrderID, ReviewerID, Rating, Comment) VALUES (?, ?, ?, ?)',
         [orderId, userId, ratingInt, feedback.trim()]
@@ -319,7 +319,7 @@ exports.approveMilestone = async (req, res, next) => {
         [Number(avgRow?.avgRating || 0).toFixed(2), order.ContributorID]
       );
 
-      // ── Auto-Report Engine ─────────────────────────────────────────────
+      // Auto-Report Engine 
       await conn.query(
         'INSERT INTO Reports (reporter_id, reported_user_id, order_id, reason, is_auto_generated) VALUES (?, ?, ?, ?, 1)',
         [userId, order.ContributorID, orderId, feedback.trim()]
@@ -358,7 +358,7 @@ exports.approveMilestone = async (req, res, next) => {
   }
 };
 
-// ── Deliver Order (Contributor marks as delivered) ───────────────────────────
+// Deliver Order (Contributor marks as delivered) 
 exports.deliverOrder = async (req, res, next) => {
   try {
     const orderId = req.params.id;
@@ -409,7 +409,7 @@ exports.deliverOrder = async (req, res, next) => {
   }
 };
 
-// ── Request Revision (Client) ───────────────────────────────────────────────
+// Request Revision (Client)
 exports.requestRevision = async (req, res, next) => {
   try {
     const orderId = req.params.id;
@@ -474,7 +474,7 @@ exports.requestRevision = async (req, res, next) => {
   }
 };
 
-// ── Create Custom Offer (From Chat Context) ─────────────────────────────────
+// Create Custom Offer (From Chat Context)
 exports.createCustomOffer = async (req, res, next) => {
   try {
     const { contributorId, clientId, title, amount, description } = req.body;
@@ -530,7 +530,7 @@ exports.createCustomOffer = async (req, res, next) => {
   }
 };
 
-// ── Transfer Order (Contributor Referral) ───────────────────────────────────
+// Transfer Order (Contributor Referral)
 exports.transferOrder = async (req, res, next) => {
   try {
     const orderId = req.params.id;
@@ -599,7 +599,7 @@ exports.transferOrder = async (req, res, next) => {
   }
 };
 
-// ── Get Single Order ────────────────────────────────────────────────────────
+// Get Single Order
 exports.getOrder = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -641,7 +641,7 @@ exports.getOrder = async (req, res, next) => {
   }
 };
 
-// ── Update Order Status (Generic) ───────────────────────────────────────────
+// Update Order Status (Generic)
 exports.updateOrderStatus = async (req, res, next) => {
   try {
     const { orderStatus, paymentStatus } = req.body;
@@ -668,7 +668,7 @@ exports.updateOrderStatus = async (req, res, next) => {
   }
 };
 
-// ── Get Orders by User ID ───────────────────────────────────────────────────
+// Get Orders by User ID
 exports.getOrdersByUser = async (req, res, next) => {
   try {
     const [rows] = await pool.query(
@@ -682,7 +682,7 @@ exports.getOrdersByUser = async (req, res, next) => {
   }
 };
 
-// ── Get My Orders (Logged-in User) ──────────────────────────────────────────
+// Get My Orders (Logged-in User)
 exports.getMyOrders = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -724,7 +724,7 @@ exports.getMyOrders = async (req, res, next) => {
   }
 };
 
-// ── Get Contributor Contact ─────────────────────────────────────────────────
+//  Get Contributor Contact
 exports.getContributorContact = async (req, res, next) => {
   try {
     const { userId } = req.params;
