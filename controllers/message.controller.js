@@ -1,10 +1,10 @@
-// ── GigVerse — Message / Chat Controller ────────────────────────────────────
+// GigVerse — Message / Chat Controller
 // Handles direct messaging between users + embedded proposal system.
 // Proposals are stored as JSON in the Messages.Content column.
 const pool = require('../database/db');
 const { createNotification } = require('./notification.controller');
 
-// ── Send a regular text message ─────────────────────────────────────────────
+// Send a regular text message 
 exports.sendMessage = async (req, res, next) => {
   try {
     const senderId   = req.user.userId;
@@ -47,7 +47,7 @@ exports.sendMessage = async (req, res, next) => {
   }
 };
 
-// ── Get conversation between current user and another user ──────────────────
+// Get conversation between current user and another user
 exports.getConversation = async (req, res, next) => {
   try {
     const userId    = req.user.userId;
@@ -74,7 +74,7 @@ exports.getConversation = async (req, res, next) => {
   }
 };
 
-// ── Get conversation list (unique partners with last message) ───────────────
+// Get conversation list (unique partners with last message)
 exports.getConversationList = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -114,7 +114,7 @@ exports.getConversationList = async (req, res, next) => {
   }
 };
 
-// ── Send a Proposal (Special message with JSON payload) ─────────────────────
+// Send a Proposal (Special message with JSON payload)
 exports.sendProposal = async (req, res, next) => {
   try {
     const senderId = req.user.userId;
@@ -169,7 +169,7 @@ exports.sendProposal = async (req, res, next) => {
   }
 };
 
-// ── Accept Proposal → Create Gig + Order + Escrow ───────────────────────────
+// Accept Proposal → Create Gig + Order + Escrow 
 exports.acceptProposal = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -281,7 +281,7 @@ exports.acceptProposal = async (req, res, next) => {
   }
 };
 
-// ── Decline Proposal ────────────────────────────────────────────────────────
+// Decline Proposal 
 exports.declineProposal = async (req, res, next) => {
   try {
     const userId    = req.user.userId;
@@ -331,7 +331,7 @@ exports.declineProposal = async (req, res, next) => {
   }
 };
 
-// ── GET /api/messages/unread-count — Total unread for badge ─────────────────
+// GET /api/messages/unread-count — Total unread for badge
 exports.getUnreadCount = async (req, res, next) => {
   try {
     const userId = req.user.userId;

@@ -1,8 +1,7 @@
--- ============================================================
+
 -- GigVerse — Escrow Payment Gateway Migration
 -- Adds payment method fields to the Orders table.
 -- Safe to run multiple times (uses IF NOT EXISTS logic via column checks).
--- ============================================================
 
 -- Step 1: Add payment_method ENUM column
 ALTER TABLE Orders

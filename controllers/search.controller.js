@@ -15,7 +15,7 @@ exports.autocomplete = async (req, res, next) => {
        ORDER BY s.SkillName LIMIT 5`,
       [like]
     );
-
+    
     const [users] = await pool.query(
       `SELECT u.UserID AS id, u.Name AS label, d.DeptName AS sub,
               u.ProfilePicUrl AS avatar, u.PVP_Points

@@ -234,7 +234,7 @@ exports.updateMyProfile = async (req, res, next) => {
     const userId = req.user.userId;
     const { name, bio, profilePicUrl, dob, whatsAppNumber, bkashNumber, bankAccountDetails } = req.body;
 
-    // ── Update Users table fields ──────────────────────────
+    // Update Users table fields
     const userFields = [];
     const userValues = [];
     if (name !== undefined) { userFields.push('Name = ?'); userValues.push(name); }
@@ -247,7 +247,7 @@ exports.updateMyProfile = async (req, res, next) => {
       await pool.query(`UPDATE Users SET ${userFields.join(', ')} WHERE UserID = ?`, userValues);
     }
 
-    // ── Update User_Private_Info table fields ──────────────
+    // Update User_Private_Info table fields
     const privateFields = [];
     const privateValues = [];
     if (whatsAppNumber !== undefined) { privateFields.push('WhatsAppNumber = ?'); privateValues.push(whatsAppNumber); }
@@ -369,7 +369,7 @@ exports.getPublicProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // ── 1. Core Profile & Contact Info ──────────────────────────────────────
+    // 1. Core Profile & Contact Info
     // NOTE: u.UiuEmail is required by the frontend Gmail compose flow.
     const [users] = await pool.query(
       `SELECT u.UserID, u.RoleID, u.Name, u.UiuEmail, u.Bio, u.PVP_Points,
@@ -388,7 +388,7 @@ exports.getPublicProfile = async (req, res, next) => {
     }
     const user = users[0];
 
-    // ── 2. Gigs created by this user ────────────────────────────────────────
+    // 2. Gigs created by this user
     // Wrapped in try-catch: if gigs query fails, return empty array instead
     // of crashing the entire profile response.
     try {
@@ -407,7 +407,7 @@ exports.getPublicProfile = async (req, res, next) => {
       user.Gigs = [];
     }
 
-    // ── 3. Skills ────────────────────────────────────────────────────────────
+    // 3. Skills
     try {
       const [skills] = await pool.query(
         `SELECT s.SkillID, s.SkillName, c.CategoryName
@@ -423,7 +423,7 @@ exports.getPublicProfile = async (req, res, next) => {
       user.skills = [];
     }
 
-    // ── 4. Experiences ──────────────────────────────────────────────────────
+    // 4. Experiences
     try {
       const [experiences] = await pool.query(
         `SELECT Title, Company, StartDate, EndDate, Description
@@ -438,7 +438,7 @@ exports.getPublicProfile = async (req, res, next) => {
       user.Experiences = [];
     }
 
-    // ── 5. Reviews received (where user is the contributor) ─────────────────
+    // 5. Reviews received (where user is the contributor)
     // Uses LEFT JOIN on the reviewer so deleted/anonymized accounts don't
     // break the entire query with a missing FK reference.
     try {
@@ -467,7 +467,7 @@ exports.getPublicProfile = async (req, res, next) => {
   }
 };
 
-// ── GET /api/users/profile/status ────────────────────────────────────────────
+// GET /api/users/profile/status
 exports.checkProfileCompletion = async (req, res, next) => {
   try {
     const userId = req.user.userId;
@@ -485,7 +485,7 @@ exports.checkProfileCompletion = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── POST /api/users/profile/complete ─────────────────────────────────────────
+// POST /api/users/profile/complete
 // Accepts { bio, profilePicUrl, deptId, skillNames:[{category,skill}] }
 // Auto-inserts missing Categories and Skills, then syncs User_Skills.
 exports.completeProfile = async (req, res, next) => {
@@ -545,7 +545,7 @@ exports.completeProfile = async (req, res, next) => {
   }
 };
 
-// ── DELETE /api/users/account ─────────────────────────────────────────────────
+// DELETE /api/users/account
 // Soft-delete: timestamps UiuEmail + PersonalEmail + WhatsAppNumber so the real
 // addresses are freed from UNIQUE constraints instantly — no hard data wipe.
 exports.deleteAccount = async (req, res, next) => {

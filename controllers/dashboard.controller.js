@@ -1,8 +1,8 @@
-// ── GigVerse — Dashboard / Analytics Controller ─────────────────────────────
+// GigVerse — Dashboard / Analytics Controller
 // Public platform stats + authenticated per-user stats + live telemetry.
 const pool = require('../database/db');
 
-// ── Platform-level Stats (Public) ───────────────────────────────────────────
+// Platform-level Stats (Public)
 exports.getStats = async (_req, res, next) => {
   try {
     const [[{ totalUsers }]] = await pool.query(
@@ -34,7 +34,7 @@ exports.getStats = async (_req, res, next) => {
   }
 };
 
-// ── Per-User Stats (Authenticated) ──────────────────────────────────────────
+// Per-User Stats (Authenticated)
 // Returns: activeOrders, totalSales, totalSpent, completedOrders
 exports.getMyStats = async (req, res, next) => {
   try {
@@ -92,7 +92,7 @@ exports.getMyStats = async (req, res, next) => {
   }
 };
 
-// ── Executive Dashboard Telemetry (Authenticated) ───────────────────────────
+// Executive Dashboard Telemetry (Authenticated)
 // Single endpoint delivering all data needed by WorkspaceHome.jsx dashboard:
 //   macroStats      — 4 KPI cards
 //   velocityChart   — 6-month revenue vs escrow sparkline
@@ -101,7 +101,7 @@ exports.getTelemetry = async (req, res, next) => {
   try {
     const userId = req.user.userId;
 
-    // ── QUERY 1: Macro Stats ─────────────────────────────────────────────────
+    // QUERY 1: Macro Stats
     // activeOrders: Dynamic count of concurrent records bound to current user session ID
     const [[macroActive]] = await pool.query(
       `SELECT COUNT(*) AS activeOrders
@@ -137,7 +137,7 @@ exports.getTelemetry = async (req, res, next) => {
       [userId]
     );
 
-    // ── QUERY 2: 6-Month Velocity Chart ─────────────────────────────────────
+    // QUERY 2: 6-Month Velocity Chart
     // Sub-query aggregation monitoring monthly velocity: Revenue vs Escrow
     const [revenueRows] = await pool.query(
       `SELECT
@@ -155,7 +155,7 @@ exports.getTelemetry = async (req, res, next) => {
 
     const velocityChart = buildSixMonthSlots(revenueRows);
 
-    // ── QUERY 3: Category Distribution (Pie/Doughnut) ───────────────────────
+    // QUERY 3: Category Distribution (Pie/Doughnut)
     // Categorize all successful cash inflows utilizing conditional group-by functions
     // mapped to discrete disciplines. We use a CTE with ROW_NUMBER() to prevent
     // multiplying order amounts if a user has multiple skills in different categories.
@@ -222,7 +222,7 @@ exports.getTelemetry = async (req, res, next) => {
   }
 };
 
-// ── Helper: Build 6 consecutive month slots ──────────────────────────────────
+// Helper: Build 6 consecutive month slots
 // Ensures the chart always gets exactly 6 points even when the user has no
 // orders in some months — avoids a broken/short sparkline on the frontend.
 function buildSixMonthSlots(rows) {

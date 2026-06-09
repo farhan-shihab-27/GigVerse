@@ -1,6 +1,6 @@
 const pool = require('../database/db');
 
-// ── POST /reviews  (legacy — client-only, kept for backward compat) ────────────
+// POST /reviews  (legacy — client-only, kept for backward compat)
 exports.createReview = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -73,7 +73,7 @@ exports.createReview = async (req, res, next) => {
   }
 };
 
-// ── POST /reviews/mutual  ──────────────────────────────────────────────────────
+// POST /reviews/mutual 
 // Mutual feedback: both Client AND Contributor can review each other.
 // Payload: { order_id, reviewer_id, reviewee_id, rating, comment }
 exports.submitMutualFeedback = async (req, res, next) => {
@@ -81,7 +81,7 @@ exports.submitMutualFeedback = async (req, res, next) => {
   try {
     const { order_id, reviewer_id, reviewee_id, rating, comment } = req.body;
 
-    // ── Validation ────────────────────────────────────────────────────────────
+    // Validation 
     if (!order_id || !reviewer_id || !reviewee_id || rating === undefined) {
       return res.status(400).json({
         success: false,
@@ -101,7 +101,7 @@ exports.submitMutualFeedback = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'You cannot review yourself.' });
     }
 
-    // ── Verify order exists and both parties are legitimate ───────────────────
+    // Verify order exists and both parties are legitimate
     const [orders] = await conn.query(
       'SELECT OrderID, ContributorID, ClientID, OrderStatus FROM Orders WHERE OrderID = ?',
       [order_id]
@@ -125,7 +125,7 @@ exports.submitMutualFeedback = async (req, res, next) => {
       });
     }
 
-    // ── Order must be in a reviewable state ───────────────────────────────────
+    // Order must be in a reviewable state
     const reviewableStatuses = ['Delivered', 'Completed'];
     if (!reviewableStatuses.includes(order.OrderStatus)) {
       conn.release();
@@ -135,7 +135,7 @@ exports.submitMutualFeedback = async (req, res, next) => {
       });
     }
 
-    // ── Prevent duplicate reviews ─────────────────────────────────────────────
+    // Prevent duplicate reviews
     const [existing] = await conn.query(
       'SELECT ReviewID FROM Reviews WHERE OrderID = ? AND ReviewerID = ?',
       [order_id, numReviewerId]
@@ -148,7 +148,7 @@ exports.submitMutualFeedback = async (req, res, next) => {
       });
     }
 
-    // ── Atomically insert review + recalculate reviewee's average rating ──────
+    // Atomically insert review + recalculate reviewee's average rating
     await conn.beginTransaction();
 
     const [reviewResult] = await conn.query(
@@ -200,7 +200,7 @@ exports.submitMutualFeedback = async (req, res, next) => {
   }
 };
 
-// ── GET /reviews/order/:orderId  ───────────────────────────────────────────────
+// GET /reviews/order/:orderId 
 // Returns all reviews for an order (up to 2 — one per party).
 exports.getReviewByOrder = async (req, res, next) => {
   try {
@@ -219,7 +219,7 @@ exports.getReviewByOrder = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── GET /reviews/order/:orderId/reviewer/:reviewerId  ─────────────────────────
+// GET /reviews/order/:orderId/reviewer/:reviewerId 
 // Checks whether a specific user has already reviewed this order.
 exports.getMyReviewForOrder = async (req, res, next) => {
   try {
@@ -235,7 +235,7 @@ exports.getMyReviewForOrder = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── GET /reviews/user/:userId  ────────────────────────────────────────────────
+// GET /reviews/user/:userId 
 // Returns all reviews received BY a user (as reviewee).
 exports.getReviewsByContributor = async (req, res, next) => {
   try {

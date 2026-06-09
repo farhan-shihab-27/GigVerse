@@ -1,4 +1,4 @@
-// ── AI-Powered Smart Pricing & Gig Estimator Controller ─────────────────────
+// AI-Powered Smart Pricing & Gig Estimator Controller 
 // Uses Google Gemini API to analyze a project description and return
 // category, skill tags, and estimated price range for the UIU campus market.
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -36,7 +36,7 @@ exports.estimateGig = async (req, res, next) => {
       });
     }
 
-    // ── Guard: API key not configured ──
+    // Guard: API key not configured 
     if (!process.env.GEMINI_API_KEY) {
       console.warn('[AI Controller] GEMINI_API_KEY is not set in environment variables.');
       return res.status(503).json({
@@ -45,7 +45,7 @@ exports.estimateGig = async (req, res, next) => {
       });
     }
 
-    // ── Call Gemini API ──
+    // Call Gemini API 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -83,7 +83,7 @@ exports.estimateGig = async (req, res, next) => {
     } catch (apiErr) {
       console.error('[AI Controller] Gemini API call failed:', apiErr.message || apiErr);
 
-      // ── Graceful Gemini-specific error handling ──
+      // Graceful Gemini-specific error handling 
       if (apiErr.message?.includes('API_KEY_INVALID') || apiErr.message?.includes('PERMISSION_DENIED')) {
         return res.status(503).json({
           success: false,
@@ -103,7 +103,7 @@ exports.estimateGig = async (req, res, next) => {
       });
     }
 
-    // ── Parse the JSON response ──
+    // Parse the JSON response
     let parsed;
     try {
       // Strip markdown code fences if the model wraps them
@@ -130,7 +130,7 @@ exports.estimateGig = async (req, res, next) => {
       }
     }
 
-    // ── Validate structure ──
+    // Validate structure 
     const data = {
       SuggestedCategory: parsed.SuggestedCategory || 'Development',
       SkillTags: Array.isArray(parsed.SkillTags) ? parsed.SkillTags.slice(0, 6) : [],
