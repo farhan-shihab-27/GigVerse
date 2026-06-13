@@ -25,13 +25,13 @@ export default function Profile() {
     whatsAppNumber: '', bkashNumber: '', bankAccountDetails: '',
   });
 
-  // ── Gig CRUD State ────────────────────────────────────────────────────────
+  //  Gig CRUD State 
   const [myGigs, setMyGigs]           = useState([]);
   const [gigsLoading, setGigsLoading] = useState(true);
   const [showGigModal, setShowGigModal] = useState(false);
   const [editingGig, setEditingGig]   = useState(null); // null = create mode
 
-  // ── Fetch profile — useCallback MUST be declared BEFORE the useEffect ──────
+  //  Fetch profile — useCallback MUST be declared BEFORE the useEffect 
   const fetchProfile = useCallback(async () => {
     setLoading(true); setError('');
     try {
@@ -81,7 +81,7 @@ export default function Profile() {
     finally { setSaving(false); }
   };
 
-  // ── Gig Actions ────────────────────────────────────────────────────────────
+  //  Gig Actions 
   const handleDeleteGig = async (gigId, title) => {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     try {
@@ -103,7 +103,7 @@ export default function Profile() {
     setShowGigModal(true);
   };
 
-  // ── Loading state ──────────────────────────────────────────────────────────
+  //  Loading state 
   if (loading) return (
     <div className="min-h-[70vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
@@ -113,7 +113,7 @@ export default function Profile() {
     </div>
   );
 
-  // ── Error / empty state (with retry button) ────────────────────────────────
+  //  Error / empty state (with retry button) 
   if (!profile) return (
     <div className="min-h-[70vh] flex items-center justify-center">
       <div className="text-center space-y-4">
@@ -127,13 +127,13 @@ export default function Profile() {
     </div>
   );
 
-  // ── Derived values (only computed when profile exists) ─────────────────────
+  //  Derived values (only computed when profile exists) 
   const initials = (profile.Name || '??').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const joinDate = profile.CreatedAt
     ? new Date(profile.CreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : 'N/A';
 
-  // ── Premium role + department formatter ───────────────────────────────────
+  //  Premium role + department formatter 
   const formatRoleLabel = (roleName, deptName) => {
     const dept = deptName ? `Dept. of ${deptName}` : null;
     const rn = (roleName || '').toLowerCase();
@@ -273,7 +273,7 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ── MY GIGS (Dynamic CRUD) ─────────────────────────────────────────── */}
+        {/*  MY GIGS (Dynamic CRUD)  */}
         <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">

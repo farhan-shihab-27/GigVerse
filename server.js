@@ -20,7 +20,7 @@ const reportRoutes = require('./routes/report.routes');
 
 const app = express();
 
-// ── Global Middleware ─────────────────────────────────────────────────────────
+//  Global Middleware 
 // --- Global Middleware ---
 app.use(cors({
   origin: [
@@ -32,12 +32,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ── Health Check ──────────────────────────────────────────────────────────────
+//  Health Check 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'GigVerse API', timestamp: new Date().toISOString() });
 });
 
-// ── API Routes ────────────────────────────────────────────────────────────────
+//  API Routes 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/search', searchRoutes);
@@ -51,7 +51,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reports', reportRoutes);
 
-// ── Global Error Handler ──────────────────────────────────────────────────────
+//  Global Error Handler 
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
   res.status(err.statusCode || 500).json({
@@ -60,7 +60,7 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// ── Conditional Start ─────────────────────────────────────────────────────────
+//  Conditional Start 
 // On Vercel, the VERCEL env var is set automatically.
 // When present, we skip app.listen() — Vercel invokes the exported app directly.
 // Locally, we start the Express HTTP server as usual.
@@ -71,7 +71,7 @@ if (!process.env.VERCEL) {
   });
 }
 
-// ── Global Process Crash Protectors ───────────────────────────────────────────
+//  Global Process Crash Protectors 
 // Catch async DB pool drops, unhandled promise rejections, and any uncaught
 // exceptions that would otherwise kill the process silently.
 process.on('unhandledRejection', (reason, promise) => {

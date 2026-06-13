@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Loader2, Tag, DollarSign, Layers, AlertCircle, RefreshCw, Wand2 } from 'lucide-react';
 import { aiAPI } from '../lib/api';
 
-// ── Debounce Hook ────────────────────────────────────────────────────────────
+//  Debounce Hook 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -14,7 +14,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-// ── Category Color Map ───────────────────────────────────────────────────────
+//  Category Color Map 
 const CATEGORY_STYLES = {
   Design:      'from-pink-500 to-rose-500',
   Development: 'from-blue-500 to-indigo-500',
@@ -32,7 +32,7 @@ export default function SmartGigEstimator() {
 
   const debouncedPrompt = useDebounce(prompt, 800);
 
-  // ── Auto-fetch when debounced prompt changes ──
+  //  Auto-fetch when debounced prompt changes 
   useEffect(() => {
     if (!debouncedPrompt || debouncedPrompt.trim().length < 10) {
       if (debouncedPrompt.trim().length === 0) {
@@ -73,7 +73,7 @@ export default function SmartGigEstimator() {
 
   return (
     <section className="mb-8 animate-fade-in">
-      {/* ── Header ── */}
+      {/*  Header  */}
       <div className="flex items-center gap-2.5 mb-4">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-orange-400 flex items-center justify-center shadow-brand">
           <Wand2 size={16} className="text-white" />
@@ -87,7 +87,7 @@ export default function SmartGigEstimator() {
         </div>
       </div>
 
-      {/* ── Textarea ── */}
+      {/*  Textarea  */}
       <div className="relative">
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-500/20 via-orange-400/20 to-amber-400/20 rounded-2xl blur-sm opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
@@ -101,7 +101,7 @@ export default function SmartGigEstimator() {
           />
         </div>
 
-        {/* ── Character count + loading indicator ── */}
+        {/*  Character count + loading indicator  */}
         <div className="flex items-center justify-between mt-2 px-1">
           <p className="text-[10px] text-gray-300">
             {prompt.length < 10 && prompt.length > 0
@@ -119,7 +119,7 @@ export default function SmartGigEstimator() {
         </div>
       </div>
 
-      {/* ── Loading Skeleton ── */}
+      {/*  Loading Skeleton  */}
       {loading && !result && (
         <div className="mt-4 rounded-2xl border border-brand-100/50 bg-gradient-to-br from-white/80 to-brand-50/30 backdrop-blur-xl p-5 shadow-brand/10">
           <div className="space-y-3 animate-pulse">
@@ -138,7 +138,7 @@ export default function SmartGigEstimator() {
         </div>
       )}
 
-      {/* ── Result Card — Glassmorphic ── */}
+      {/*  Result Card — Glassmorphic  */}
       {result && !loading && (
         <div className="mt-4 relative group animate-slide-up">
           {/* Glow effect */}
@@ -197,7 +197,7 @@ export default function SmartGigEstimator() {
         </div>
       )}
 
-      {/* ── Error State ── */}
+      {/*  Error State  */}
       {error && !loading && (
         <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 backdrop-blur-sm p-4 flex items-start gap-3 animate-slide-up">
           <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />

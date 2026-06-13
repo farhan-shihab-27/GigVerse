@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { paymentAPI } from '../lib/api';
 
-// ── Mobile Money Providers ───────────────────────────────────────────────────
+//  Mobile Money Providers 
 const MOBILE_PROVIDERS = [
   {
     id: 'bkash',
@@ -32,7 +32,7 @@ const MOBILE_PROVIDERS = [
   },
 ];
 
-// ── Bank List (Exactly 20) ──────────────────────────────────────────────────
+//  Bank List (Exactly 20) 
 const BANK_LIST = [
   'BRAC Bank',
   'The City Bank',
@@ -64,7 +64,7 @@ const BANK_LIST = [
  * @param {Function} props.onSuccess    - Called with response data on success
  */
 export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess }) {
-  // ── State ──────────────────────────────────────────────────────────────────
+  //  State 
   const [activeTab, setActiveTab]           = useState('mobile');  // 'mobile' | 'bank'
   const [mobileProvider, setMobileProvider] = useState('bkash');
   const [senderNumber, setSenderNumber]     = useState('');
@@ -81,12 +81,12 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
 
   const selectedProvider = MOBILE_PROVIDERS.find(p => p.id === mobileProvider);
 
-  // ── Validation ─────────────────────────────────────────────────────────────
+  //  Validation 
   const isMobileValid = senderNumber.trim().length >= 6 && txId.trim().length >= 4;
   const isBankValid   = selectedBank && accountName.trim().length >= 2 && accountNumber.trim().length >= 6 && bankRefId.trim().length >= 4;
   const isFormValid   = activeTab === 'mobile' ? isMobileValid : isBankValid;
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  //  Submit 
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
@@ -116,7 +116,7 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
     }
   };
 
-  // ── Close handler (reset on close) ─────────────────────────────────────────
+  //  Close handler (reset on close) 
   const handleClose = () => {
     if (loading) return;
     setError('');
@@ -133,7 +133,7 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
         className="relative w-full max-w-lg bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-900/10 overflow-hidden flex flex-col max-h-[92vh] animate-slide-up border border-white/60"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/*  Header  */}
         <div className="relative px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-white to-brand-50/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -167,7 +167,7 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
           </div>
         </div>
 
-        {/* ── Tab Switcher ────────────────────────────────────────────────── */}
+        {/*  Tab Switcher  */}
         <div className="px-6 pt-4 pb-0">
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
             <button
@@ -195,10 +195,10 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
           </div>
         </div>
 
-        {/* ── Scrollable Content ──────────────────────────────────────────── */}
+        {/*  Scrollable Content  */}
         <div className="flex-1 overflow-y-auto px-6 py-4" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}>
 
-          {/* ────── TAB 1: MOBILE MONEY ────── */}
+          {/*  TAB 1: MOBILE MONEY  */}
           {activeTab === 'mobile' && (
             <div className="space-y-5 animate-fade-in">
               {/* Provider selection */}
@@ -279,7 +279,7 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
             </div>
           )}
 
-          {/* ────── TAB 2: BANK TRANSFER ────── */}
+          {/*  TAB 2: BANK TRANSFER  */}
           {activeTab === 'bank' && (
             <div className="space-y-5 animate-fade-in">
               {/* Bank details card */}
@@ -352,7 +352,7 @@ export default function PaymentGatewayModal({ isOpen, onClose, order, onSuccess 
           )}
         </div>
 
-        {/* ── Footer ──────────────────────────────────────────────────────── */}
+        {/*  Footer  */}
         <div className="px-6 py-4 border-t border-gray-100 bg-gradient-to-r from-gray-50/80 to-white space-y-3">
           {/* Error */}
           {error && (

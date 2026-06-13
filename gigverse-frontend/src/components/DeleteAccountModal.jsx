@@ -106,7 +106,7 @@ export default function DeleteAccountModal({ onClose }) {
             </>
           )}
 
-          {/* ── STEP 2: Password Confirm ── */}
+          {/* STEP 2: Password Confirm */}
           {step === 2 && (
             <>
               {/* Critical warning */}

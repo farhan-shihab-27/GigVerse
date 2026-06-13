@@ -7,7 +7,7 @@ import { Bell, Check, CheckCheck, MessageSquare, ClipboardList, Star, AlertTrian
 import { notificationAPI, messageAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
-// ── Icon map by notification type ───────────────────────────────────────────
+//  Icon map by notification type 
 const TYPE_CONFIG = {
   order:     { icon: ClipboardList, color: 'text-blue-500',   bg: 'bg-blue-50' },
   milestone: { icon: Zap,           color: 'text-brand-500',  bg: 'bg-brand-50' },
@@ -17,7 +17,7 @@ const TYPE_CONFIG = {
   system:    { icon: Bell,          color: 'text-gray-500',   bg: 'bg-gray-50' },
 };
 
-// ── Safe display text parser ────────────────────────────────────────────────
+//  Safe display text parser 
 // If the string is valid JSON with a `text` property, return that text.
 // If it's a JSON proposal, build a human-readable summary.
 // Otherwise, return the raw string as-is (it's already plain text).
@@ -48,7 +48,7 @@ function parseDisplayText(raw) {
   }
 }
 
-// ── Route resolver for notification click ───────────────────────────────────
+//  Route resolver for notification click 
 // Maps notification type → target route for navigation.
 function getNotificationRoute(notif) {
   const type = (notif.Type || '').toLowerCase();
@@ -85,7 +85,7 @@ export default function NotificationBell() {
   const prevCount = useRef(0);
   const navigate = useNavigate();
 
-  // ── Fetch unread count (polling every 10s) ─────────────────────────────────
+  //  Fetch unread count (polling every 10s) 
   const fetchUnreadCount = useCallback(async () => {
     try {
       let notifCount = 0;
@@ -132,7 +132,7 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
-  // ── Fetch notifications when panel opens ──────────────────────────────────
+  //  Fetch notifications when panel opens 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
@@ -175,7 +175,7 @@ export default function NotificationBell() {
     setIsOpen(!isOpen);
   };
 
-  // ── Close on outside click ────────────────────────────────────────────────
+  //  Close on outside click 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (panelRef.current && !panelRef.current.contains(e.target)) {
@@ -186,7 +186,7 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // ── Mark single as read ───────────────────────────────────────────────────
+  //  Mark single as read 
   const handleMarkRead = async (id) => {
     try {
       // Synthetic message notifications have string IDs like "msg-123-0"
@@ -208,7 +208,7 @@ export default function NotificationBell() {
     }
   };
 
-  // ── Handle notification click — mark read + navigate ──────────────────────
+  //  Handle notification click — mark read + navigate 
   const handleNotificationClick = (notif) => {
     const isUnread = !notif.IsRead;
     if (isUnread) handleMarkRead(notif.NotificationID);
@@ -220,7 +220,7 @@ export default function NotificationBell() {
     }
   };
 
-  // ── Mark all as read ──────────────────────────────────────────────────────
+  //  Mark all as read 
   const handleMarkAllRead = async () => {
     try {
       await notificationAPI.markAllRead();
@@ -231,7 +231,7 @@ export default function NotificationBell() {
     }
   };
 
-  // ── Time ago helper ───────────────────────────────────────────────────────
+  //  Time ago helper 
   const timeAgo = (dateStr) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -246,7 +246,7 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={panelRef}>
-      {/* ── Bell Button ────────────────────────────────────────────────────── */}
+      {/*  Bell Button  */}
       <button
         id="nav-notifications"
         onClick={togglePanel}
@@ -269,7 +269,7 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* ── Dropdown Panel ─────────────────────────────────────────────────── */}
+      {/*  Dropdown Panel  */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-[360px] max-h-[480px] rounded-2xl glass-panel overflow-hidden z-50 animate-slide-down border border-gray-200/50">
 

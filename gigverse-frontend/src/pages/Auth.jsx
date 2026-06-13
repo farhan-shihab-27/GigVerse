@@ -146,7 +146,7 @@ export default function Auth() {
   return (
     <div className="flex min-h-screen font-sans">
 
-      {/* ── LEFT PANEL ─────────────────────────────────── */}
+      {/*  LEFT PANEL  */}
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden flex-col">
         <img src={uiuCampus} alt="UIU Campus" className="absolute inset-0 w-full h-full object-cover scale-105 transition-transform duration-700" />
         <div className="absolute inset-0" style={{background:'linear-gradient(135deg, rgba(10,10,20,0.78) 0%, rgba(30,15,5,0.65) 60%, rgba(242,101,34,0.35) 100%)'}} />
@@ -197,7 +197,7 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* ── RIGHT PANEL ────────────────────────────────── */}
+      {/*  RIGHT PANEL  */}
       <div className="flex-1 flex flex-col overflow-y-auto bg-gray-50">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 p-6 pb-0">
@@ -235,7 +235,7 @@ export default function Auth() {
                 </div>
               )}
 
-              {/* ── LOGIN ── */}
+              {/*  LOGIN  */}
               {mode === 'login' && (
                 <form onSubmit={handleLogin} className="space-y-5 animate-slide-up" noValidate>
                   <div>
@@ -272,7 +272,7 @@ export default function Auth() {
                 </form>
               )}
 
-              {/* ── SIGNUP ── */}
+              {/*  SIGNUP  */}
               {mode === 'signup' && (
                 <form onSubmit={handleSignup} className="space-y-4 animate-slide-up" noValidate>
                   <div>
@@ -435,7 +435,7 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* ── OTP MODAL ──────────────────────────────────── */}
+      {/*  OTP MODAL  */}
       {showOtp && (
         <OtpModal
           email={form.email}

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { userAPI } from '../lib/api';
 
-// ── Full 60+ Skill Catalog ────────────────────────────────────────────────────
+//  Full 60+ Skill Catalog 
 const SKILL_CATALOG = [
   { category: 'Programming and Technology', skills: [
     'Full-Stack Web Development','Frontend Development','Backend Development',
@@ -175,7 +175,7 @@ export default function ProfileCompletionModal({ onComplete, userName }) {
             </div>
           )}
 
-          {/* ── STEP 1: Avatar ── */}
+          {/*  STEP 1: Avatar  */}
           {step === 0 && (
             <div className="flex flex-col items-center gap-5">
               {/* Preview circle */}
@@ -218,7 +218,7 @@ export default function ProfileCompletionModal({ onComplete, userName }) {
             </div>
           )}
 
-          {/* ── STEP 2: Bio & Department ── */}
+          {/*  STEP 2: Bio & Department  */}
           {step === 1 && (
             <div className="space-y-5">
               <div className="space-y-2">
@@ -246,7 +246,7 @@ export default function ProfileCompletionModal({ onComplete, userName }) {
             </div>
           )}
 
-          {/* ── STEP 3: Skills ── */}
+          {/*  STEP 3: Skills  */}
           {step === 2 && (
             <div className="space-y-6">
               {/* Selection counter sticky header */}

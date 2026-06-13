@@ -1,4 +1,4 @@
-// ── GigVerse — Milestone Escrow Schema Migration ────────────────────────────
+// GigVerse — Milestone Escrow Schema Migration
 // Safely adds milestone_count, current_milestone to Orders
 // and adds Status, AmountPercent, AmountTaka, ReleasedTransactionId to OrderMilestones.
 // Idempotent: re-running this script will not fail if columns already exist.
@@ -22,7 +22,7 @@ async function runMigration() {
 
     console.log('✅ Connected. Running milestone escrow migration...');
 
-    // ── 1. Ensure OrderMilestones table exists ────────────────────────────────
+    //  1. Ensure OrderMilestones table exists 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS OrderMilestones (
         MilestoneID         INT          AUTO_INCREMENT PRIMARY KEY,
@@ -46,7 +46,7 @@ async function runMigration() {
     `);
     console.log('  ✓ OrderMilestones table ensured.');
 
-    // ── 2. Safely add missing columns to OrderMilestones ─────────────────────
+    // 2. Safely add missing columns to OrderMilestones 
     const columnsToAdd = [
       { name: 'Description',         sql: "ADD COLUMN Description TEXT NULL AFTER Label" },
       { name: 'AmountPercent',       sql: "ADD COLUMN AmountPercent INT NOT NULL DEFAULT 25 AFTER Description" },
@@ -69,7 +69,7 @@ async function runMigration() {
       }
     }
 
-    // ── 3. Add milestone tracking columns to Orders table ────────────────────
+    //  3. Add milestone tracking columns to Orders table 
     const orderColumns = [
       { name: 'MilestoneCount',   sql: "ADD COLUMN MilestoneCount INT NOT NULL DEFAULT 4 AFTER PaymentStatus" },
       { name: 'CurrentMilestone', sql: "ADD COLUMN CurrentMilestone INT NOT NULL DEFAULT 0 AFTER MilestoneCount" },
@@ -93,7 +93,7 @@ async function runMigration() {
       }
     }
 
-    // ── 4. Add WalletBalance column to Users (simulated escrow wallet) ────────
+    //  4. Add WalletBalance column to Users (simulated escrow wallet) 
     try {
       await connection.query(
         `ALTER TABLE Users ADD COLUMN WalletBalance DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER PVP_Points`
@@ -107,7 +107,7 @@ async function runMigration() {
       }
     }
 
-    // ── 5. Ensure OrderRevisions table exists ─────────────────────────────────
+    //  5. Ensure OrderRevisions table exists 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS OrderRevisions (
         RevisionID   INT       AUTO_INCREMENT PRIMARY KEY,
@@ -124,7 +124,7 @@ async function runMigration() {
     `);
     console.log('  ✓ OrderRevisions table ensured.');
 
-    // ── 5. Backfill AmountTaka for existing milestones ───────────────────────
+    //  5. Backfill AmountTaka for existing milestones 
     await connection.query(`
       UPDATE OrderMilestones om
       JOIN Orders o ON om.OrderID = o.OrderID

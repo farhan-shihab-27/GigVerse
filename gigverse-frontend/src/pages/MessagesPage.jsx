@@ -24,7 +24,7 @@ export default function MessagesPage() {
 
   const firstName = (currentUser.Name || 'there').split(' ')[0];
 
-  // ── Handle the ?initiate=true magic link parameter ─────────────────────────
+  //  Handle the ?initiate=true magic link parameter 
   useEffect(() => {
     if (isInitiate && !initiated) {
       setInitiated(true);

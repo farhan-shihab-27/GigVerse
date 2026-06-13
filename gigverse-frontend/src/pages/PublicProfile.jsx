@@ -1,5 +1,5 @@
 // src/pages/PublicProfile.jsx — Public Portfolio with Gmail Web Contact Flow
-// ────────────────────────────────────────────────────────────────────────────
+
 // ARCHITECTURE:
 //   Route:    /profile/:id  →  this component
 //   Backend:  GET /api/users/public/:id  →  getPublicProfile()
@@ -10,7 +10,7 @@
 //   2. State-boundary normalization guarantees arrays before they reach JSX
 //   3. Every render-path property uses optional chaining + fallback values
 //   4. Error states keep the container alive — never crash to a blank screen
-// ────────────────────────────────────────────────────────────────────────────
+
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Zap, Star, Loader2, AlertCircle, CheckCircle2, Briefcase, Mail, ArrowLeft, User, RefreshCw, Tag } from 'lucide-react';
@@ -22,7 +22,7 @@ export default function PublicProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // ── Fetch — useCallback ensures stable identity across re-renders ────────
+  //  Fetch — useCallback ensures stable identity across re-renders 
   // AbortController cancels in-flight requests if `id` changes mid-fetch,
   // preventing the "flash then crash" race condition.
   const fetchProfile = useCallback(async (signal) => {
@@ -35,14 +35,14 @@ export default function PublicProfile() {
 
       const profileData = res?.data?.data;
 
-      // ── Guard: backend returned 200 but payload is empty or malformed ────
+      //  Guard: backend returned 200 but payload is empty or malformed 
       if (!profileData || typeof profileData !== 'object' || !profileData.UserID) {
         setError('This profile could not be loaded. The user may have been deactivated.');
         setUser(null);
         return;
       }
 
-      // ── State-boundary normalization ─────────────────────────────────────
+      // State-boundary normalization 
       // Guarantee every nested collection is an array BEFORE it enters state.
       // This is the single source of truth — the JSX never needs to re-check.
       setUser({
@@ -59,7 +59,7 @@ export default function PublicProfile() {
 
       console.error('[PublicProfile] Fetch failed for id=' + id + ':', err);
 
-      // ── Differentiate error types for user-friendly messaging ────────────
+      //  Differentiate error types for user-friendly messaging 
       const status = err?.response?.status;
       if (status === 404) {
         setError('This user profile was not found. They may have deactivated their account.');
@@ -75,7 +75,7 @@ export default function PublicProfile() {
     }
   }, [id]);
 
-  // ── Effect — fires on mount and when `id` param changes ──────────────────
+  // Effect — fires on mount and when `id` param changes 
   // Returns a cleanup function that aborts the previous request if `id` changes
   // before the first request completes (prevents the stale-data flash).
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function PublicProfile() {
     return () => controller.abort();
   }, [fetchProfile]);
 
-  // ── Build Gmail Web Compose URL (bypasses broken native Outlook on Windows) ──
+  //  Build Gmail Web Compose URL (bypasses broken native Outlook on Windows) 
   const buildGmailComposeUrl = () => {
     if (!user) return '#';
 
@@ -112,7 +112,7 @@ export default function PublicProfile() {
     window.open(buildGmailComposeUrl(), '_blank', 'noopener,noreferrer');
   };
 
-  // ── Loading state ────────────────────────────────────────────────────────
+  // Loading state 
   if (loading) return (
     <div className="min-h-[70vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
@@ -122,7 +122,7 @@ export default function PublicProfile() {
     </div>
   );
 
-  // ── Error / empty state — with retry button so the user isn't stuck ──────
+  // Error / empty state — with retry button so the user isn't stuck 
   if (error || !user) return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center">
       <AlertCircle size={48} className="text-red-400 mb-3" />
@@ -137,7 +137,7 @@ export default function PublicProfile() {
     </div>
   );
 
-  // ── Derived display values — triple-guarded ──────────────────────────────
+  // Derived display values — triple-guarded
   const displayName    = user?.Name || 'Contributor';
   const initials       = (displayName || '').split(' ').map(w => w?.[0] || '').join('').slice(0, 2).toUpperCase() || '??';
   const pvpPoints      = user?.PVP_Points ?? 0;
@@ -148,7 +148,7 @@ export default function PublicProfile() {
   const userReviews    = user?.Reviews || [];
   const userSkills     = user?.skills  || [];
 
-  // ── Premium role + department formatter ──────────────────────────────────
+  // Premium role + department formatter 
   const formatRoleLabel = (roleName, deptName) => {
     const dept = deptName ? `Dept. of ${deptName}` : null;
     const rn = (roleName || '').toLowerCase();

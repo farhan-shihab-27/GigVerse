@@ -73,7 +73,7 @@ export default function Home() {
     );
   }
 
-  // ── Anonymous marketing landing page (unchanged) ──────────────────────────
+  //  Anonymous marketing landing page (unchanged) 
 
   const fetchGigs = async () => {
     setLoading(true); setError('');

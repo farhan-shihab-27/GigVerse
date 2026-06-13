@@ -13,7 +13,7 @@ import MilestoneEscrowTracker from '../components/MilestoneEscrowTracker';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
 import toast from 'react-hot-toast';
 
-// ── Status display helpers ───────────────────────────────────────────────────
+//  Status display helpers 
 const STATUS_META = {
   Pending_Acceptance: { color: 'text-amber-700 bg-amber-50 border-amber-200',   dot: 'bg-amber-400',   label: 'Pending Acceptance' },
   In_Progress:        { color: 'text-blue-700  bg-blue-50  border-blue-200',    dot: 'bg-blue-500',    label: 'In Progress' },
@@ -34,7 +34,7 @@ const PAYMENT_META = {
   Pending:            { color: 'text-yellow-700 bg-yellow-50', label: 'Pending' },
 };
 
-// ── Stat card ────────────────────────────────────────────────────────────────
+//  Stat card 
 function StatCard({ icon: Icon, label, value, sub, accent = 'brand' }) {
   const accents = {
     brand:   'from-brand-400   to-brand-600   shadow-brand',
@@ -56,7 +56,7 @@ function StatCard({ icon: Icon, label, value, sub, accent = 'brand' }) {
   );
 }
 
-// ── Timeline event ────────────────────────────────────────────────────────────
+//  Timeline event 
 function TimelineEvent({ dot, title, subtitle, time, isLast }) {
   return (
     <div className="flex gap-3">
@@ -144,7 +144,7 @@ export default function OrderDetails() {
   const isClient = order ? order.ClientID === currentUser?.UserID : false;
   const isContributor = order ? order.ContributorID === currentUser?.UserID : false;
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  //  Actions 
   const doAction = async (key, fn) => {
     setActionLoading(key);
     try { await fn(); fetchOrder(); }
@@ -202,13 +202,13 @@ export default function OrderDetails() {
     finally { setLoadingContact(false); }
   };
 
-  // ── Final Milestone Interception (from MilestoneEscrowTracker) ──────────────
+  //  Final Milestone Interception (from MilestoneEscrowTracker) 
   const handleFinalMilestoneApproval = (step) => {
     setPendingFinalStep(step);
     setShowRatingModal(true);
   };
 
-  // ── Submit Rating + Feedback → triggers final milestone or full release ─────
+  //  Submit Rating + Feedback → triggers final milestone or full release 
   const handleRatingSubmit = () => {
     if (ratingValue < 1 || ratingValue > 5) {
       toast.error('Please select a star rating (1-5).', { className: 'gv-toast' });
@@ -253,7 +253,7 @@ export default function OrderDetails() {
     }
   };
 
-  // ── Submit Standalone Mutual Feedback (Leave Feedback button) ───────────────
+  //  Submit Standalone Mutual Feedback (Leave Feedback button) 
   const handleFeedbackSubmit = async () => {
     if (feedbackRating < 1 || feedbackRating > 5) {
       toast.error('Please select a star rating between 1 and 5.', { className: 'gv-toast' });
@@ -290,7 +290,7 @@ export default function OrderDetails() {
     }
   };
 
-  // ── Submit Manual Report ────────────────────────────────────────────────────
+  //  Submit Manual Report 
   const handleReportSubmit = () => {
     if (!reportReason.trim()) {
       toast.error('Please describe the reason for reporting.', { className: 'gv-toast' });
@@ -305,7 +305,7 @@ export default function OrderDetails() {
     setReportReason('');
   };
 
-  // ── Computed values ──────────────────────────────────────────────────────────
+  //  Computed values 
   const statusMeta  = order ? (STATUS_META[order.OrderStatus]  || { color: 'text-gray-600 bg-gray-100 border-gray-200', dot: 'bg-gray-400', label: order.OrderStatus }) : null;
   const paymentMeta = order ? (PAYMENT_META[order.PaymentStatus] || { color: 'text-gray-600 bg-gray-100', label: order.PaymentStatus }) : null;
   const hasTracker  = order && ['In_Progress', 'Delivered', 'Completed'].includes(order.OrderStatus);
@@ -314,7 +314,7 @@ export default function OrderDetails() {
   const revCount    = order?.RevisionCount || 0;
   const isTerminal  = ['Completed', 'Cancelled', 'Disputed'].includes(order?.OrderStatus);
 
-  // ── Timeline events ──────────────────────────────────────────────────────────
+  //  Timeline events 
   const timelineEvents = order ? [
     {
       dot: 'bg-brand-400',
@@ -348,7 +348,7 @@ export default function OrderDetails() {
     },
   ].filter(Boolean) : [];
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  //  Render 
   if (loading) return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
@@ -530,10 +530,10 @@ export default function OrderDetails() {
           </div>
         )}
 
-        {/* ── Main Content Grid ── */}
+        {/*  Main Content Grid  */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* ── LEFT: Milestone Tracker (spans 2 cols) ── */}
+          {/*  LEFT: Milestone Tracker (spans 2 cols)  */}
           <div className="lg:col-span-2 space-y-5">
 
             {/* Milestone Escrow Tracker */}
@@ -711,7 +711,7 @@ export default function OrderDetails() {
             )}
           </div>
 
-          {/* ── RIGHT: Action Panel + Timeline ── */}
+          {/*  RIGHT: Action Panel + Timeline  */}
           <div className="space-y-5">
 
             {/* Action Panel */}
@@ -1140,7 +1140,7 @@ export default function OrderDetails() {
             className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-sm animate-slide-up overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* ── Modal Header ── */}
+            {/*  Modal Header  */}
             <div className="bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 p-6 text-center relative overflow-hidden">
               {/* Decorative rings */}
               <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
@@ -1156,9 +1156,9 @@ export default function OrderDetails() {
               </div>
             </div>
 
-            {/* ── Modal Body ── */}
+            {/*  Modal Body  */}
             <div className="p-6">
-              {/* ── Interactive Star Rating ── */}
+              {/*  Interactive Star Rating  */}
               <div className="mb-6">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center mb-3">
                   Select Your Rating
@@ -1210,7 +1210,7 @@ export default function OrderDetails() {
                 </div>
               </div>
 
-              {/* ── Written Feedback Textarea ── */}
+              {/*  Written Feedback Textarea  */}
               <div className="mb-5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">
                   Written Feedback
@@ -1233,7 +1233,7 @@ export default function OrderDetails() {
                 </div>
               </div>
 
-              {/* ── Action Buttons ── */}
+              {/*  Action Buttons  */}
               <div className="flex gap-2.5">
                 <button
                   onClick={handleFeedbackSubmit}
@@ -1262,7 +1262,7 @@ export default function OrderDetails() {
                 </button>
               </div>
 
-              {/* ── 5-star incentive hint ── */}
+              {/*  5-star incentive hint  */}
               {feedbackRating === 5 && (
                 <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-center gap-2">
                   <span className="text-amber-500 text-sm">🏆</span>
@@ -1276,7 +1276,7 @@ export default function OrderDetails() {
         </div>
       )}
 
-      {/* ── Manual Report User Modal ── */}
+      {/*  Manual Report User Modal  */}
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={() => { setShowReportModal(false); setReportReason(''); }}>
           <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full animate-slide-up border border-gray-100" onClick={e => e.stopPropagation()}>

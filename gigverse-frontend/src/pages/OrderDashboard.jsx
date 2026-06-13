@@ -74,7 +74,7 @@ export default function OrderDashboard() {
   const isClient = (o) => o.ClientID === currentUser?.UserID;
   const isContributor = (o) => o.ContributorID === currentUser?.UserID;
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  //  Actions 
   const handleAccept = async (id) => {
     setActionLoading(id);
     try {
@@ -254,7 +254,7 @@ export default function OrderDashboard() {
                     </div>
                   </div>
 
-                  {/* ── Expanded Detail Panel ── */}
+                  {/*  Expanded Detail Panel  */}
                   {expanded && (
                     <div className="border-t border-gray-100 bg-gray-50/50 p-5 sm:p-6 space-y-5 animate-fade-in">
 
@@ -294,7 +294,7 @@ export default function OrderDashboard() {
                         </div>
                       )}
 
-                      {/* ── Action Buttons ── */}
+                      {/*  Action Buttons  */}
                       <div className="flex flex-wrap gap-2">
                         {/* Contributor: Accept */}
                         {contributor && order.OrderStatus === 'Pending_Acceptance' && (
@@ -393,7 +393,7 @@ export default function OrderDashboard() {
           </div>
         )}
 
-        {/* ── Contact Modal ── */}
+        {/*  Contact Modal  */}
         {selectedOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => { setSelectedOrder(null); setContactInfo(null); }}>
             <div className="card p-6 sm:p-8 max-w-md w-full animate-slide-up" onClick={e => e.stopPropagation()}>

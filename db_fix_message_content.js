@@ -1,4 +1,4 @@
-// ── GigVerse — Fix Messages.Content Column Size ─────────────────────────────
+// GigVerse — Fix Messages.Content Column Size
 // MySQL TEXT has a 64KB limit which truncates base64-encoded voice/file data.
 // This migration upgrades the column to LONGTEXT (4GB) so media messages
 // stored as inline base64 JSON can be persisted without truncation.

@@ -11,7 +11,7 @@ const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' }
 });
-// ── Request interceptor: attach JWT to every request ──────────────────────────
+//  Request interceptor: attach JWT to every request 
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('gv_token');
@@ -21,7 +21,7 @@ api.interceptors.request.use(
   (err) => Promise.reject(err)
 );
 
-// ── Response interceptor: only 401 from server = expired/invalid token ────────
+//  Response interceptor: only 401 from server = expired/invalid token 
 // Network errors, CORS failures, and timeouts must NOT wipe the session.
 api.interceptors.response.use(
   (res) => res,
@@ -39,7 +39,7 @@ api.interceptors.response.use(
   }
 );
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+//  Auth 
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
@@ -47,7 +47,7 @@ export const authAPI = {
   verifyOtp: (data) => api.post('/auth/verify-otp', data),
 };
 
-// ── User / Profile ────────────────────────────────────────────────────────────
+//  User / Profile 
 export const userAPI = {
   getMyProfile: () => api.get('/users/profile'),
   updateMyProfile: (data) => api.put('/users/profile', data),
@@ -57,7 +57,7 @@ export const userAPI = {
   deleteAccount: (payload) => api.delete('/users/account', { data: payload }),
 };
 
-// ── Gigs (Full CRUD) ─────────────────────────────────────────────────────────
+//  Gigs (Full CRUD) 
 export const gigAPI = {
   getAll: (limit = 20, offset = 0) => api.get(`/gigs?limit=${limit}&offset=${offset}`),
   getById: (id) => api.get(`/gigs/${id}`),
@@ -67,7 +67,7 @@ export const gigAPI = {
   remove: (id) => api.delete(`/gigs/${id}`),
 };
 
-// ── Orders ────────────────────────────────────────────────────────────────────
+//  Orders 
 export const orderAPI = {
   create: (data) => api.post('/orders', data),
   getMyOrders: () => api.get('/orders/my'),
@@ -82,19 +82,19 @@ export const orderAPI = {
   transferOrder: (id, data) => api.post(`/orders/${id}/transfer`, data),
 };
 
-// ── Search ────────────────────────────────────────────────────────────────────
+//  Search 
 export const searchAPI = {
   autocomplete: (q) => api.get(`/search/autocomplete?q=${encodeURIComponent(q)}`),
   contributors: (skill) => api.get(`/search/contributors?skill=${encodeURIComponent(skill)}`),
   skills: () => api.get('/search/skills'),
 };
 
-// ── AI Smart Pricing ──────────────────────────────────────────────────────────
+//  AI Smart Pricing 
 export const aiAPI = {
   estimateGig: (prompt) => api.post('/ai/estimate', { prompt }),
 };
 
-// ── Payments ──────────────────────────────────────────────────────────────────
+//  Payments 
 export const paymentAPI = {
   processEscrow: (data) => api.post('/payments/escrow', data),
   releaseEscrow: (data) => api.post('/payments/escrow/release', data),
@@ -102,7 +102,7 @@ export const paymentAPI = {
   disputeOrder: (data) => api.post('/payments/escrow/dispute', data),
 };
 
-// ── Notifications ─────────────────────────────────────────────────────────────
+//  Notifications 
 export const notificationAPI = {
   getAll: (limit = 20) => api.get(`/notifications?limit=${limit}`),
   getUnreadCount: () => api.get('/notifications/unread-count'),
@@ -110,7 +110,7 @@ export const notificationAPI = {
   markAllRead: () => api.patch('/notifications/read-all'),
 };
 
-// ── Messages / Chat ──────────────────────────────────────────────────────────
+//  Messages / Chat 
 export const messageAPI = {
   send: (data) => api.post('/messages', data),
   getConversations: () => api.get('/messages/conversations'),
@@ -121,14 +121,14 @@ export const messageAPI = {
   declineProposal: (messageId) => api.post(`/messages/proposal/${messageId}/decline`),
 };
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
+//  Dashboard 
 export const dashboardAPI = {
   getStats:     () => api.get('/dashboard/stats'),
   getMyStats:   () => api.get('/dashboard/my-stats'),
   getTelemetry: () => api.get('/dashboard/telemetry'),
 };
 
-// ── Reviews ───────────────────────────────────────────────────────────────────
+//  Reviews 
 export const reviewAPI = {
   create: (data) => api.post('/reviews', data),
   getByOrder: (orderId) => api.get(`/reviews/order/${orderId}`),
@@ -141,7 +141,7 @@ export const reviewAPI = {
     api.get(`/reviews/order/${orderId}/reviewer/${reviewerId}`),
 };
 
-// ── Reports ───────────────────────────────────────────────────────────────────
+//  Reports 
 export const reportAPI = {
   submit: (data) => api.post('/reports', data),
 };

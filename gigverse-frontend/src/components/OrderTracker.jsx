@@ -124,7 +124,7 @@ export default function OrderTracker({
 
   return (
     <div className="space-y-5">
-      {/* ── Header with progress summary ───────────────────────────────────── */}
+      {/*  Header with progress summary  */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2.5">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
@@ -154,7 +154,7 @@ export default function OrderTracker({
         </div>
       </div>
 
-      {/* ── Glassmorphic progress bar ──────────────────────────────────────── */}
+      {/*  Glassmorphic progress bar  */}
       <div className="relative">
         <div className="h-3.5 bg-gray-100/80 rounded-full overflow-hidden backdrop-blur-sm border border-gray-200/50">
           <div
@@ -192,7 +192,7 @@ export default function OrderTracker({
         </div>
       </div>
 
-      {/* ── 4-Stage Milestone Cards ───────────────────────────────────────── */}
+      {/*  4-Stage Milestone Cards  */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {STEPS.map((s) => {
           const ms = getMilestone(s.step);

@@ -11,7 +11,7 @@ import {
 import { messageAPI, orderAPI, reviewAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
-// ── Inline Review Card — renders after order completion ──────────────────────
+// Inline Review Card — renders after order completion 
 /**
  * Premium 5-star rating + feedback panel rendered between the chat messages area
  * and the input bar. Only visible when:
@@ -68,7 +68,7 @@ function InlineReviewCard({ order, reviewerId, onSubmitted }) {
   const starLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent ⭐'];
   const display    = hover || rating;
 
-  // ── Submitted thank-you state ──────────────────────────────────────────────
+  // Submitted thank-you state
   if (submitted) {
     return (
       <div className="px-4 py-4 bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 border-t-2 border-emerald-300">
@@ -212,7 +212,7 @@ function InlineReviewCard({ order, reviewerId, onSubmitted }) {
 }
 
 
-// ── Parse message content — returns { type, text, ...proposal } ──────────────
+// Parse message content — returns { type, text, ...proposal }
 function parseContent(content) {
   try {
     const parsed = JSON.parse(content);
@@ -221,7 +221,7 @@ function parseContent(content) {
   return { type: 'text', text: content };
 }
 
-// ── Proposal Card (rendered inside chat bubble) ──────────────────────────────
+// Proposal Card (rendered inside chat bubble)
 function ProposalCard({ proposal, messageId, isMine, onAccept, onDecline, accepting }) {
   const isAccepted  = proposal.status === 'accepted';
   const isDeclined  = proposal.status === 'declined';
@@ -292,7 +292,7 @@ function ProposalCard({ proposal, messageId, isMine, onAccept, onDecline, accept
   );
 }
 
-// ── System Message Card ──────────────────────────────────────────────────────
+// System Message Card
 function SystemMessage({ data }) {
   return (
     <div className="flex justify-center my-3">
@@ -305,7 +305,7 @@ function SystemMessage({ data }) {
   );
 }
 
-// ── Main ChatDrawer Component ────────────────────────────────────────────────
+// Main ChatDrawer Component
 export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnreadChange }) {
   const [conversations, setConversations] = useState([]);
   const [activePartner, setActivePartner] = useState(null);
@@ -339,7 +339,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('gv_user')) || {}; } catch { return {}; } })();
 
-  // ── Fetch conversation list ────────────────────────────────────────────────
+  // Fetch conversation list
   const fetchConversations = useCallback(async () => {
     setConversationsLoading(true);
     try {
@@ -353,7 +353,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     finally { setConversationsLoading(false); }
   }, [onUnreadChange]);
 
-  // ── Fetch messages with a partner ──────────────────────────────────────────
+  // Fetch messages with a partner
   const fetchMessages = useCallback(async (partnerId, isInitial = false) => {
     if (!partnerId) return;
     setLoading(true);
@@ -366,7 +366,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     finally { setLoading(false); }
   }, []);
 
-  // ── On open: load conversations, auto-select targetUser ────────────────────
+  // On open: load conversations, auto-select targetUser
   useEffect(() => {
     if (!isOpen) {
       clearInterval(pollRef.current);
@@ -384,7 +384,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     }
   }, [isOpen, targetUser, fetchConversations, fetchMessages]);
 
-  // ── Poll for new messages every 5s ─────────────────────────────────────────
+  // Poll for new messages every 5s
   useEffect(() => {
     if (!isOpen || !activePartner) return;
     clearInterval(pollRef.current);
@@ -395,19 +395,19 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     return () => clearInterval(pollRef.current);
   }, [isOpen, activePartner, fetchMessages, fetchConversations]);
 
-  // ── Also poll conversations when drawer is open but no active partner ──────
+  // Also poll conversations when drawer is open but no active partner
   useEffect(() => {
     if (!isOpen || activePartner) return;
     const t = setInterval(fetchConversations, 5000);
     return () => clearInterval(t);
   }, [isOpen, activePartner, fetchConversations]);
 
-  // ── Scroll to bottom on new messages ───────────────────────────────────────
+  // Scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ── Detect pending review when active partner changes ──────────────────────
+  // Detect pending review when active partner changes
   // Queries my orders to find a Completed order with this partner where I am
   // the Client and no review has been submitted yet.
   useEffect(() => {
@@ -443,7 +443,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
 
 
 
-  // ── Select a conversation ──────────────────────────────────────────────────
+  // Select a conversation
   const selectPartner = (conv) => {
     setActivePartner(conv);
     setMessages([]);
@@ -451,7 +451,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     setShowProposalForm(false);
   };
 
-  // ── Send a regular message ─────────────────────────────────────────────────
+  // Send a regular message
   const handleSend = async () => {
     if (!msgInput.trim() || !activePartner) return;
     setSending(true);
@@ -465,7 +465,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     } finally { setSending(false); }
   };
 
-  // ── Send a proposal ────────────────────────────────────────────────────────
+  // Send a proposal 
   const handleSendProposal = async () => {
     if (!proposal.price || !proposal.deliveryDays || !proposal.description) {
       toast.error('All proposal fields are required.', { className: 'gv-toast' }); return;
@@ -488,7 +488,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     } finally { setSending(false); }
   };
 
-  // ── Accept a proposal ──────────────────────────────────────────────────────
+  // Accept a proposal
   const handleAcceptProposal = async (messageId) => {
     setAccepting(true);
     try {
@@ -501,7 +501,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     } finally { setAccepting(false); }
   };
 
-  // ── Decline a proposal ─────────────────────────────────────────────────────
+  // Decline a proposal
   const handleDeclineProposal = async (messageId) => {
     try {
       await messageAPI.declineProposal(messageId);
@@ -517,7 +517,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  // ── Voice Recording with Web Audio API (MediaRecorder) ──────────────────────
+  // Voice Recording with Web Audio API (MediaRecorder)
   const handleMicToggle = async () => {
     if (isRecording) {
       // Stop recording
@@ -586,7 +586,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     finally { setSending(false); }
   };
 
-  // ── File Attachment via OS file picker ─────────────────────────────────────
+  // File Attachment via OS file picker
   const handleMediaUpload = (e) => { e.stopPropagation(); e.preventDefault(); fileInputRef.current?.click(); };
   const handleFileSelected = async (e) => {
     const file = e.target.files?.[0];
@@ -620,7 +620,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
     finally { setSending(false); e.target.value = ''; }
   };
 
-  // ── Camera Capture ────────────────────────────────────────────────────────
+  // Camera Capture
   const handleCamera = (e) => { e.stopPropagation(); e.preventDefault(); cameraInputRef.current?.click(); };
   const handleCameraCapture = async (e) => {
     const file = e.target.files?.[0];
@@ -672,7 +672,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
       <div className={`relative h-full shadow-2xl flex overflow-hidden ${isFullScreen ? 'w-full' : 'w-full max-w-2xl'}`} onClick={e => e.stopPropagation()}
         style={{ animation: 'slideLeft 0.35s cubic-bezier(0.32,0.72,0,1)', background: '#f8f9fa' }}>
 
-        {/* ── Conversation List Sidebar ──────────────────────────────────────── */}
+        {/* Conversation List Sidebar */}
         <div className={`${activePartner ? 'hidden sm:flex' : 'flex'} flex-col w-72 shrink-0`}
           style={{ background: '#fff', borderRight: '1px solid #e5e7eb' }}>
           <div className="px-4 py-4 border-b border-gray-100"
@@ -723,7 +723,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
           </div>
         </div>
 
-        {/* ── Chat Panel ─────────────────────────────────────────────────────── */}
+        {/* Chat Panel */}
         <div className="flex-1 flex flex-col min-w-0">
           {!activePartner ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
@@ -734,7 +734,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
             </div>
           ) : (
             <>
-              {/* ── WhatsApp-Level Chat Header ── */}
+              {/* WhatsApp-Level Chat Header */}
               <div className="flex items-center gap-3 px-5 py-4 shrink-0"
                 style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
                 <button onClick={() => setActivePartner(null)}
@@ -775,7 +775,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                 </div>
               </div>
 
-              {/* ── Messages area with WhatsApp-style wallpaper ── */}
+              {/* Messages area with WhatsApp-style wallpaper */}
               <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4" style={{
                 scrollbarWidth: 'thin',
                 background: 'linear-gradient(160deg, #FFFBEB 0%, #FEF3C7 50%, #FFFBEB 100%)'
@@ -806,11 +806,11 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                     );
                   }
 
-                  // ── Detect rich message types from JSON content ──
+                  // Detect rich message types from JSON content
                   const textContent = parsed.text || msg.Content;
                   const richType = parsed.type; // 'voice' | 'file' | 'image' | 'text' | 'proposal' | 'system'
 
-                  // ── Voice Note Bubble ──
+                  // Voice Note Bubble 
                   if (richType === 'voice' && parsed.src) {
                     return (
                       <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -843,7 +843,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                     );
                   }
 
-                  // ── File Download Bubble ──
+                  // File Download Bubble
                   if (richType === 'file' && parsed.src) {
                     const sizeKB = parsed.size ? (parsed.size / 1024).toFixed(1) : '?';
                     const isImg = parsed.mime?.startsWith('image/');
@@ -903,7 +903,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                     );
                   }
 
-                  // ── Plain Text Bubble (fallback) ──
+                  // Plain Text Bubble (fallback)
                   return (
                     <div key={msg.MessageID} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
@@ -970,7 +970,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
                 </div>
               )}
 
-              {/* ── WhatsApp-Level Input Bar ── */}
+              {/* WhatsApp-Level Input Bar */}
               <div className="px-4 py-4 shrink-0" style={{ background: '#f8f9fa', borderTop: '1px solid #e5e7eb' }}>
 
                 {/* Voice Recording indicator */}
@@ -1079,7 +1079,7 @@ export default function ChatDrawer({ isOpen, onClose, targetUser = null, onUnrea
         </div>
       </div>
 
-      {/* ── TASK 3: Jitsi Meet Call Modal ── */}
+      {/* TASK 3: Jitsi Meet Call Modal */}
       {showCallModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={e => e.stopPropagation()}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCallModal(false)} />

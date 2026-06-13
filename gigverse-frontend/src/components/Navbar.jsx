@@ -48,7 +48,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-      {/* ── Desktop layout ── */}
+      {/*  Desktop layout  */}
       <div className="hidden md:flex items-center h-16 px-4 lg:px-6 gap-3 w-full">
 
         {/* Logo — shrink-0 left anchor */}
@@ -110,7 +110,7 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* ── Mobile header ── */}
+      {/*  Mobile header  */}
       <div className="md:hidden flex items-center justify-between h-14 px-4">
         <Link to="/home" className="flex items-center gap-2">
           <div className="w-7 h-7 bg-brand-gradient rounded-lg flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* ── Mobile drawer ── */}
+      {/* Mobile drawer  */}
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3 animate-slide-up">
           {/* DynamicSearch for mobile drawer too */}

@@ -11,7 +11,7 @@ import {
 import { orderAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
-// ── Step definitions ─────────────────────────────────────────────────────────
+// Step definitions
 const STEPS = [
   { step: 1, label: 'Design & Planning',   icon: Palette,   color: 'from-violet-400 to-purple-500',   shadow: 'shadow-purple-200', ring: 'ring-purple-300'  },
   { step: 2, label: 'Draft & Development', icon: FileText,  color: 'from-blue-400   to-indigo-500',   shadow: 'shadow-blue-200',   ring: 'ring-blue-300'    },
@@ -19,7 +19,7 @@ const STEPS = [
   { step: 4, label: 'Final Delivery',      icon: Package,   color: 'from-emerald-400 to-green-500',   shadow: 'shadow-emerald-200',ring: 'ring-emerald-300' },
 ];
 
-// ── Status metadata ──────────────────────────────────────────────────────────
+// Status metadata
 const MS_STATUS = {
   pending: {
     label: 'Locked',
@@ -51,7 +51,7 @@ const MS_STATUS = {
   },
 };
 
-// ── Individual Milestone Card ─────────────────────────────────────────────────
+// Individual Milestone Card
 function MilestoneCard({ stepDef, milestone, isContributor, isClient, canSubmit, canApprove, onSubmit, onApprove, submitting, approving, orderAmount }) {
   const status    = milestone?.Status || 'pending';
   const meta      = MS_STATUS[status] || MS_STATUS.pending;
@@ -193,7 +193,7 @@ function MilestoneCard({ stepDef, milestone, isContributor, isClient, canSubmit,
   );
 }
 
-// ── Progress Bar ─────────────────────────────────────────────────────────────
+// Progress Bar
 function EscrowProgressBar({ percent, isComplete }) {
   return (
     <div className="space-y-2">
@@ -237,7 +237,7 @@ function EscrowProgressBar({ percent, isComplete }) {
   );
 }
 
-// ── SVG Doughnut Chart ───────────────────────────────────────────────────────
+// SVG Doughnut Chart
 /**
  * Pure SVG doughnut ring chart. No external dependencies.
  * Props:
@@ -319,7 +319,7 @@ function EscrowDoughnutChart({ releasedPct, isComplete }) {
   );
 }
 
-// ── Order Financial Analytics Section ────────────────────────────────────────
+// Order Financial Analytics Section
 /**
  * Appended below the milestone cards — reads computed values from parent scope.
  * All props are API-wiring ready; replace mock derivations with real API data.
@@ -342,7 +342,7 @@ function OrderFinancialAnalytics({
   milestoneCount,
   releasedCount,
 }) {
-  // ── ERP Stat Cards data ───────────────────────────────────────────────────
+  // ERP Stat Cards data
   const statCards = [
     {
       id: 'tvl',
@@ -473,7 +473,7 @@ function OrderFinancialAnalytics({
         </div>
       </div>
 
-      {/* ── ERP Stat Cards — 3-column grid ── */}
+      {/* ERP Stat Cards — 3-column grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {statCards.map((card) => {
           const CardIcon = card.icon;
@@ -515,7 +515,7 @@ function OrderFinancialAnalytics({
         })}
       </div>
 
-      {/* ── Footer note ── */}
+      {/* Footer note */}
       <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50/50 border border-blue-100">
         <Activity size={11} className="text-blue-400 shrink-0" />
         <p className="text-[10px] text-blue-500 font-medium">
@@ -526,7 +526,7 @@ function OrderFinancialAnalytics({
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// Main Component
 export default function MilestoneEscrowTracker({
   orderId,
   currentStep = 0,
@@ -560,7 +560,7 @@ export default function MilestoneEscrowTracker({
     return getStatus(step) === 'submitted_by_freelancer';
   };
 
-  // ── Submit milestone ─────────────────────────────────────────────────────
+  // Submit milestone 
   const handleSubmit = async (step) => {
     if (!canContributorSubmit(step)) return;
     setAdvancing(true);
@@ -577,7 +577,7 @@ export default function MilestoneEscrowTracker({
     } finally { setAdvancing(false); }
   };
 
-  // ── Approve milestone & release funds ────────────────────────────────────
+  // Approve milestone & release funds
   const handleApprove = async (step) => {
     if (!canClientApprove(step)) return;
     // Intercept final milestone (step 4) — delegate to parent for rating/feedback modal
@@ -607,7 +607,7 @@ export default function MilestoneEscrowTracker({
     } finally { setApproving(null); }
   };
 
-  // ── Computed values ──────────────────────────────────────────────────────
+  // Computed values
   const releasedCount   = localMilestones.filter(m => m.Status === 'funds_released').length;
   const submittedCount  = localMilestones.filter(m => m.Status === 'submitted_by_freelancer').length;
   const progressPercent = releasedCount * 25;
@@ -620,7 +620,7 @@ export default function MilestoneEscrowTracker({
   return (
     <div className="space-y-6">
 
-      {/* ── Summary header ── */}
+      {/*  Summary header  */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
@@ -665,7 +665,7 @@ export default function MilestoneEscrowTracker({
         </div>
       </div>
 
-      {/* ── Progress bar ── */}
+      {/*  Progress bar  */}
       <EscrowProgressBar percent={progressPercent} isComplete={isFullyReleased} />
 
       {/* Role guidance chip */}
@@ -680,7 +680,7 @@ export default function MilestoneEscrowTracker({
         </div>
       )}
 
-      {/* ── Milestone Cards Grid ── */}
+      {/*  Milestone Cards Grid  */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {STEPS.map((s) => {
           const ms = getMS(s.step);
@@ -703,7 +703,7 @@ export default function MilestoneEscrowTracker({
         })}
       </div>
 
-      {/* ── Legend ── */}
+      {/*  Legend  */}
       <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-gray-100">
         {[
           { dot: 'bg-gray-300',   label: 'Locked' },
@@ -717,7 +717,7 @@ export default function MilestoneEscrowTracker({
         ))}
       </div>
 
-      {/* ── Order Financial Analytics — appended below, no existing logic touched ── */}
+      {/*  Order Financial Analytics — appended below, no existing logic touched  */}
       <OrderFinancialAnalytics
         totalOrderValue={Number(orderAmount)}
         releasedFunds={totalReleased}

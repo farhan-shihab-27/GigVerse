@@ -6,10 +6,10 @@ async function createTable() {
     try {
         console.log('⏳ Creating Reports table...');
         
-        // migrate_reports.sql ফাইলটা রিড করছে
+        // migrate_reports.sql Reading the File
         const sql = fs.readFileSync(path.join(__dirname, 'database', 'migrate_reports.sql'), 'utf8');
         
-        // ডাটাবেসে টেবিল বানাচ্ছে
+        // Creating Database Table
         await pool.query(sql);
         
         console.log('✅ Success! Reports table created successfully in your database!');

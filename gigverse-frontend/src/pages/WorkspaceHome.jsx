@@ -16,10 +16,10 @@ import SmartGigEstimator from '../components/SmartGigEstimator';
 import GigFormModal from '../components/GigFormModal';
 import ChatDrawer from '../components/ChatDrawer';
 
-// ────────────────────────────────────────────────────────────────────────────────
+
 // CATEGORY → ICON MAP — maps backend CategoryName strings to Lucide components
 // so the pie-chart legend keeps its icon column after switching to live data.
-// ────────────────────────────────────────────────────────────────────────────────
+
 const CATEGORY_ICON_MAP = {
   Development: Code2,
   Design:      Pen,
@@ -62,7 +62,7 @@ const DEMO_DISTRIBUTION = [
 // MOCK_REVIEWS removed — now fetched live from reviewAPI.getByContributor(userId)
 
 
-// ── Review Analytics Modal ───────────────────────────────────────────────────────────
+// Review Analytics Modal 
 /**
  * Premium overlay modal showing rating breakdown, bar chart, and recent reviews.
  * Props:
@@ -198,7 +198,7 @@ function ReviewAnalyticsModal({ isOpen, onClose, avgRating, reviews = [] }) {
   );
 }
 
-// ── Active Gigs SVG Pie Chart ───────────────────────────────────────────────────────────
+// Active Gigs SVG Pie Chart 
 /**
  * Pure SVG pie chart for gig income distribution.
  * Generates SVG arc slices from data array.
@@ -308,7 +308,7 @@ function polarToCartesian(cx, cy, r, angleDeg) {
   return { x: cx + r * Math.cos(rad + Math.PI / 2), y: cy + r * Math.sin(rad + Math.PI / 2) };
 }
 
-// ── Platform Analytics Section ──────────────────────────────────────────────────────────
+// Platform Analytics Section 
 /**
  * The prominent analytics grid row below the summary cards.
  * Left 60%: Monthly Revenue & Escrow Velocity placeholder with SVG sparkline.
@@ -526,9 +526,9 @@ export default function WorkspaceHome() {
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   // Review Analytics Modal state — triggered by Avg. Rating card click
   const [showReviewModal, setShowReviewModal] = useState(false);
-  // ── Live reviews for the Review Analytics Modal ──────────────────────────
+  // Live reviews for the Review Analytics Modal 
   const [myReviews, setMyReviews]   = useState([]);
-  // ── Telemetry state — live dashboard data from /api/dashboard/telemetry ──
+  // Telemetry state — live dashboard data from /api/dashboard/telemetry 
   const [telemetry, setTelemetry]             = useState(null);
   const [telemetryLoading, setTelemetryLoading] = useState(true);
 
@@ -569,7 +569,7 @@ export default function WorkspaceHome() {
       .catch(() => {});
   }, []);
 
-  // ── Fetch live telemetry (macro stats + velocity chart + distribution) ────
+  // Fetch live telemetry (macro stats + velocity chart + distribution)
   useEffect(() => {
     setTelemetryLoading(true);
     dashboardAPI.getTelemetry()
@@ -605,7 +605,7 @@ export default function WorkspaceHome() {
       .finally(() => setSugLoading(false));
   }, [debQuery]);
 
-  // ── Draggable sidebar ──────────────────────────────────────────────────────
+  // Draggable sidebar
   const onDragStart = useCallback((e) => {
     isDragging.current = true;
     startX.current = e.clientX;
@@ -648,7 +648,7 @@ export default function WorkspaceHome() {
     skillCount >= 3,
   ].filter(Boolean).length * 25);
 
-  // ── Derive live chart data from telemetry (with fallbacks) ─────────────────
+  // Derive live chart data from telemetry (with fallbacks)
   const isDemoMode = !telemetry || (
     telemetry.macroStats?.totalSales === 0 &&
     telemetry.macroStats?.activeOrders === 0 &&
@@ -705,7 +705,7 @@ export default function WorkspaceHome() {
   return (
     <><div className="flex bg-gray-50 bg-dora-kata" style={{ height: 'calc(100vh - 4rem)' }}>
 
-      {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
+      {/* LEFT SIDEBAR */}
       <aside
         className="flex flex-col shrink-0 bg-white border-r border-gray-100 shadow-sm transition-all duration-300 overflow-hidden"
         style={{ width: collapsed ? '56px' : '224px' }}>
@@ -769,7 +769,7 @@ export default function WorkspaceHome() {
         </div>
       </aside>
 
-      {/* ── CENTER FEED ──────────────────────────────────────────────────── */}
+      {/* CENTER FEED */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Search row */}
@@ -788,7 +788,7 @@ export default function WorkspaceHome() {
               {sugLoading && <Loader2 size={13} className="animate-spin text-brand-500" />}
             </div>
 
-            {/* ── Grouped suggestions dropdown ── */}
+            {/* Grouped suggestions dropdown */}
             {showSug && query.length >= 2 && (
               <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50 bg-white border border-gray-200 shadow-xl animate-slide-up">
                 {!hasSuggestions && !sugLoading && (
@@ -853,7 +853,7 @@ export default function WorkspaceHome() {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}>
 
-          {/* ── Executive Dashboard Header ── */}
+          {/* Executive Dashboard Header */}
           <section>
             {/* Premium Header Block */}
             <div className="mb-6 pb-5 border-b border-gray-100/80">
@@ -928,7 +928,7 @@ export default function WorkspaceHome() {
             )}
           </section>
 
-          {/* ── Platform Analytics Hub ── */}
+          {/* Platform Analytics Hub  */}
           {telemetryLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 size={28} className="animate-spin text-indigo-400" />
@@ -944,10 +944,10 @@ export default function WorkspaceHome() {
             />
           )}
 
-          {/* ── AI Smart Pricing Estimator ── */}
+          {/*  AI Smart Pricing Estimator  */}
           <SmartGigEstimator />
 
-          {/* ── Gig Discovery ── */}
+          {/*  Gig Discovery  */}
           <section>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -1045,7 +1045,7 @@ export default function WorkspaceHome() {
         </div>
       </main>
 
-      {/* ── DRAG HANDLE + RIGHT SIDEBAR ──────────────────────────────────── */}
+      {/* DRAG HANDLE + RIGHT SIDEBAR  */}
       <div className="flex shrink-0" style={{ width: sidebarWidth }}>
         <div
           className="w-3 flex items-center justify-center cursor-col-resize group shrink-0 border-l border-gray-100 hover:border-brand-300 transition-colors bg-white select-none"

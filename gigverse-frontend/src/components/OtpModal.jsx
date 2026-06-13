@@ -19,7 +19,7 @@ export default function OtpModal({
   const [localErr, setLocalErr]  = useState('');
   const inputRefs = useRef([]);
 
-  // ── Countdown ─────────────────────────────────────────────────
+  //  Countdown 
   useEffect(() => {
     if (timeLeft <= 0) { setCanResend(true); return; }
     const t = setTimeout(() => setTimeLeft((p) => p - 1), 1000);
@@ -29,7 +29,7 @@ export default function OtpModal({
   const formatTime = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  // ── Digit input handlers ──────────────────────────────────────
+  //  Digit input handlers 
   const handleDigitChange = (idx, val) => {
     const cleaned = val.replace(/\D/g, '').slice(-1);
     const next    = [...digits];
@@ -60,7 +60,7 @@ export default function OtpModal({
 
   const otpString = digits.join('');
 
-  // ── Submit ────────────────────────────────────────────────────
+  //  Submit 
   const handleSubmit = useCallback((e) => {
     e?.preventDefault();
     if (otpString.length < 6) { setLocalErr('Please enter all 6 digits.'); return; }
@@ -77,7 +77,7 @@ export default function OtpModal({
   // Auto-focus first box on mount
   useEffect(() => { inputRefs.current[0]?.focus(); }, []);
 
-  // ── Resend ────────────────────────────────────────────────────
+  //  Resend 
   const handleResend = () => {
     setDigits(['', '', '', '', '', '']);
     setTimeLeft(OTP_EXPIRY_SECONDS);

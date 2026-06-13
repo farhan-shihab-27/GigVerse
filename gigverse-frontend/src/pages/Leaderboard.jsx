@@ -6,7 +6,7 @@ import { userAPI } from '../lib/api';
 
 const RANK_MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
-// ── Premium role + department formatter ────────────────────────────────────────
+//  Premium role + department formatter 
 const formatRoleLabel = (roleName, deptName) => {
   const dept = deptName ? `Dept. of ${deptName}` : null;
   const rn = (roleName || '').toLowerCase();
